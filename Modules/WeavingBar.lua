@@ -1,63 +1,33 @@
 --[[
-    HunterSuite - Weaving Bar Module
-    Real-time rotation guide for TBC Hunter shot weaving
-    
-    Displays a scrolling timeline bar showing optimal shot rotation
-    based on current haste buffs, spec, and melee weaving preference.
-    
-    Based on diziet559's rotationtools:
-    https://diziet559.github.io/rotationtools/
+    HunterSuite - Weaving Bar (TBC clients)
+    Scrolling rotation guide for Steady Shot weaving, based on diziet559's
+    rotationtools (https://diziet559.github.io/rotationtools/). WoW Forever
+    has no Steady Shot, so the module stays off there.
 ]]
 
-local addonName, HunterSuite = ...
+local _, HS = ...
+local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-HunterSuite.WeavingBar = {}
-local WeavingBar = HunterSuite.WeavingBar
+local WB = HS:NewModule("weavingBar", { title = "Weaving Bar" })
 
--- ============================================================================
--- Constants
--- ============================================================================
+function WB:IsSupported()
+    return not HS.IS_FOREVER and S.Known(S.STEADY_SHOT)
+end
 
 local GCD = 1.5
 local STEADY_CAST = 1.5
 local MULTI_CAST = 0.5
 local ARCANE_CAST = 0.5
-local WEAVE_TIME = 0.3  -- Time to step in, swing, step out
+local WEAVE_TIME = 0.3
 
--- Spell IDs
-local SPELL_AUTO_SHOT       = 75
-local SPELL_STEADY_SHOT     = 34120
-local SPELL_MULTI_SHOT      = 27021
-local SPELL_ARCANE_SHOT     = 27019
-local SPELL_RAPTOR_STRIKE   = 27014
-local SPELL_RAPID_FIRE      = 3045
-local SPELL_KILL_COMMAND     = 34026
-
--- Buff spell IDs / names for detection
-local BUFF_RAPID_FIRE       = "Rapid Fire"
-local BUFF_QUICK_SHOTS       = "Quick Shots"          -- Imp. Aspect of the Hawk proc
-local BUFF_BLOODLUST         = "Bloodlust"
-local BUFF_HEROISM           = "Heroism"
-local BUFF_DRUMS_OF_BATTLE   = "Drums of Battle"
-local BUFF_DST_PROC          = "Haste"                -- Dragon Spine Trophy proc name
-
--- Haste multipliers (multiplicative)
-local HASTE_QUIVER           = 1.15
-local HASTE_SERPENTS_SWIFT   = 1.20
-local HASTE_IMP_HAWK         = 1.15
-local HASTE_RAPID_FIRE       = 1.40
-local HASTE_BLOODLUST        = 1.30
-local HASTE_DRUMS            = 1.05
-
--- Ability display info: color {r,g,b}, label, cast_time, is_melee, icon
 local ABILITY_INFO = {
-    auto    = { color = {0.2, 0.8, 0.2},  label = "A",   castTime = 0,           isMelee = false, icon = [[Interface\Icons\Ability_Hunter_RunningShot]] },
-    steady  = { color = {0.3, 0.5, 1.0},  label = "S",   castTime = STEADY_CAST, isMelee = false, icon = [[Interface\Icons\Ability_Hunter_SteadyShot]] },
-    multi   = { color = {1.0, 0.8, 0.1},  label = "M",   castTime = MULTI_CAST,  isMelee = false, icon = [[Interface\Icons\Ability_UpgradeMoonGlaive]] },
-    arcane  = { color = {0.7, 0.3, 1.0},  label = "Arc", castTime = ARCANE_CAST, isMelee = false, icon = [[Interface\Icons\Ability_ImpalingBolt]] },
-    raptor  = { color = {0.9, 0.2, 0.2},  label = "R",   castTime = 0,           isMelee = true,  icon = [[Interface\Icons\Ability_MeleeDamage]] },
-    melee   = { color = {1.0, 0.6, 0.1},  label = "W",   castTime = 0,           isMelee = true,  icon = [[Interface\Icons\Ability_MeleeDamage]] },
-    weave   = { color = {0.9, 0.4, 0.1},  label = "W",   castTime = WEAVE_TIME,  isMelee = true,  icon = [[Interface\Icons\Ability_MeleeDamage]] },
+    auto   = { color = { 0.33, 0.85, 0.52 }, label = "A",   icon = 132369, melee = false },
+    steady = { color = { 0.36, 0.67, 1.00 }, label = "S",   icon = 132213, melee = false },
+    multi  = { color = { 1.00, 0.74, 0.28 }, label = "M",   icon = 132330, melee = false },
+    arcane = { color = { 0.70, 0.52, 1.00 }, label = "Arc", icon = 132218, melee = false },
+    raptor = { color = { 0.97, 0.36, 0.36 }, label = "R",   icon = 132223, melee = true },
+    melee  = { color = { 1.00, 0.60, 0.20 }, label = "W",   icon = 132223, melee = true },
+    weave  = { color = { 1.00, 0.55, 0.20 }, label = "W",   icon = 132223, melee = true },
 }
 
 -- ============================================================================
@@ -315,906 +285,305 @@ ROTATIONS["max_weave"] = {
     end,
 }
 
--- ============================================================================
+
+---------------------------------------------------------------------------
 -- State
--- ============================================================================
+---------------------------------------------------------------------------
 
 local state = {
-    -- Haste & speed
-    eWS = 0,                    -- Effective weapon swing (ranged)
-    meleeEWS = 0,               -- Effective weapon swing (melee)
-    baseWeaponSpeed = 3.0,      -- Tooltip ranged weapon speed
-    baseMeleeSpeed = 3.7,       -- Tooltip melee weapon speed
-    
-    -- Spec
-    isBM = false,
-    hasSerpentsSwiftness = false,
-    
-    -- Active buffs (booleans)
-    hasQuiver = false,
-    hasRapidFire = false,
-    hasQuickShots = false,      -- Imp. Hawk proc
-    hasBloodlust = false,
-    hasDrums = false,
-    hasDST = false,
-    
-    -- Buff durations for display
-    rapidFireExpires = 0,
-    quickShotsExpires = 0,
-    bloodlustExpires = 0,
-    drumsExpires = 0,
-    dstExpires = 0,
-    
-    -- Current rotation
-    currentRotation = nil,      -- Key into ROTATIONS table
-    currentSequence = nil,      -- Built sequence for current eWS
-    cycleDuration = 0,          -- Duration of one cycle
-    
-    -- Swing tracking
-    lastAutoTime = 0,           -- When last auto shot fired
-    cycleStartTime = 0,         -- When current rotation cycle started
-    isAutoShooting = false,     -- Auto shot repeating
-    
-    -- GCD tracking
-    gcdStart = 0,
-    gcdDuration = 0,
-    
-    -- Cast tracking
-    isCasting = false,
-    castEndTime = 0,
-    currentCastAbility = nil,
-    
-    -- Melee tracking
-    lastMeleeTime = 0,
-    raptorStrikeCD = 0,         -- Expiration time of Raptor Strike CD
-    nextMeleeIsRaptor = true,   -- Alternate raptor/white
-    
-    -- Kill Command tracking
-    killCommandCD = 0,
-    
-    -- Player state
-    isMoving = false,
-    playerGUID = nil,
-    
-    -- Rotation change alert
-    rotationChangeTime = 0,
-    previousRotation = nil,
+    eWS = 3, isBM = false,
+    rapidFire = 0, quickShots = 0, bloodlust = 0, drums = 0,
+    rotation = nil, sequence = nil, cycle = 0,
+    lastAuto = 0, cycleStart = 0, autoRepeat = false,
+    changedAt = 0,
 }
 
--- ============================================================================
--- eWS Calculation
--- ============================================================================
+local HASTE = {
+    rapidFire = { ids = { [3045] = true }, name = "Rapid Fire" },
+    quickShots = { name = "Quick Shots" },
+    bloodlust = { ids = { [2825] = true, [32182] = true }, name = "Bloodlust", alt = "Heroism" },
+    drums = { ids = { [35476] = true }, name = "Drums of Battle" },
+}
 
--- Get ranged eWS directly from game API (most accurate)
-function WeavingBar:GetRangedEWS()
-    local speed = UnitRangedDamage("player")
-    if speed and speed > 0 then
-        return speed
-    end
-    return 3.0 / HASTE_QUIVER  -- Fallback: base speed with quiver
+function WB:ScanBuffs()
+    for key in pairs(HASTE) do state[key] = 0 end
+    C.ForEachAura("player", "HELPFUL", function(aura)
+        for key, spec in pairs(HASTE) do
+            if (spec.ids and spec.ids[aura.spellId]) or aura.name == spec.name or (spec.alt and aura.name == spec.alt) then
+                state[key] = C.Readable(aura.expirationTime) or 0
+            end
+        end
+    end)
+    local speed = C.Readable(UnitRangedDamage("player"))
+    state.eWS = (speed and speed > 0) and speed or 3
 end
 
--- Get melee eWS from game API
-function WeavingBar:GetMeleeEWS()
-    local mainSpeed, offSpeed = UnitAttackSpeed("player")
-    if mainSpeed and mainSpeed > 0 then
-        return mainSpeed
-    end
-    return 3.7  -- Fallback
-end
-
--- Detect spec via talents
-function WeavingBar:DetectSpec()
-    -- Scan BM tree (tab 1) for Serpent's Swiftness
-    local numTalents = GetNumTalents(1)
-    state.hasSerpentsSwiftness = false
-    for i = 1, numTalents do
+function WB:DetectSpec()
+    state.isBM = false
+    if not GetNumTalents then return end
+    for i = 1, GetNumTalents(1) or 0 do
         local name, _, _, _, rank = GetTalentInfo(1, i)
         if name == "Serpent's Swiftness" then
-            state.hasSerpentsSwiftness = (rank and rank > 0)
-            break
-        end
-    end
-    state.isBM = state.hasSerpentsSwiftness
-end
-
--- Scan player buffs for haste effects
-function WeavingBar:ScanBuffs()
-    local now = GetTime()
-    
-    state.hasRapidFire = false
-    state.hasQuickShots = false
-    state.hasBloodlust = false
-    state.hasDrums = false
-    state.hasDST = false
-    
-    for i = 1, 40 do
-        local name, _, _, _, duration, expirationTime, _, _, _, spellId = UnitBuff("player", i)
-        if not name then break end
-        
-        if name == BUFF_RAPID_FIRE or spellId == 3045 then
-            state.hasRapidFire = true
-            state.rapidFireExpires = expirationTime or 0
-        elseif name == BUFF_QUICK_SHOTS then
-            state.hasQuickShots = true
-            state.quickShotsExpires = expirationTime or 0
-        elseif name == BUFF_BLOODLUST or name == BUFF_HEROISM or spellId == 2825 or spellId == 32182 then
-            state.hasBloodlust = true
-            state.bloodlustExpires = expirationTime or 0
-        elseif name == BUFF_DRUMS_OF_BATTLE or spellId == 35476 then
-            state.hasDrums = true
-            state.drumsExpires = expirationTime or 0
-        elseif name == BUFF_DST_PROC then
-            -- DST proc is generic "Haste" - check if it's ~325 haste rating worth
-            state.hasDST = true
-            state.dstExpires = expirationTime or 0
-        end
-    end
-    
-    -- Quiver detection: check if ranged haste includes quiver
-    -- In TBC, quivers are equipped items; check ammo slot
-    state.hasQuiver = true  -- Assume quiver for now (virtually all hunters have one)
-end
-
--- Update all haste state and eWS
-function WeavingBar:UpdateHaste()
-    self:ScanBuffs()
-    
-    -- Use game API for actual eWS (most accurate, accounts for all haste)
-    state.eWS = self:GetRangedEWS()
-    state.meleeEWS = self:GetMeleeEWS()
-    
-    -- Get base weapon speed from tooltip for display
-    -- UnitRangedDamage returns hasted speed; to get base we'd need to reverse-calculate
-    -- For now store the hasted value as eWS which is what we need
-end
-
--- ============================================================================
--- Rotation Selection
--- ============================================================================
-
-function WeavingBar:SelectRotation()
-    local db = HunterSuite.db.weavingBar
-    local eWS = state.eWS
-    local weaving = db.enableWeaving
-    local previousRotation = state.currentRotation
-    
-    local selected = nil
-    
-    if weaving then
-        -- Melee weaving rotation selection
-        if state.isBM then
-            if eWS < 0.94 then
-                selected = "max_weave"          -- 3:7 2w
-            elseif state.hasRapidFire then
-                if state.hasBloodlust or (state.hasQuickShots and state.hasDrums) then
-                    selected = "max_weave"      -- RF + BL, or RF + Hawk + Drums
-                else
-                    selected = "rf_weave"       -- 6:9:1:1 3w
-                end
-            elseif state.hasQuickShots or state.hasBloodlust or state.hasDST then
-                selected = "half_weave"         -- 1:1 Half-Weave
-            else
-                selected = "french_weave"       -- French Weaving baseline
-            end
-        else
-            -- SV with weaving: simpler selection
-            if eWS < 1.3 then
-                selected = "half_weave"
-            elseif eWS < 2.0 then
-                selected = "half_weave"
-            else
-                selected = "french_weave"
-            end
-        end
-    else
-        -- Ranged-only rotation selection
-        if state.isBM then
-            if eWS >= 2.0 then
-                selected = "french"             -- French 5:5:1:1
-            elseif eWS >= 1.8 then
-                selected = "long_french"        -- Long French 5:6:1:1
-            elseif eWS >= 1.3 then
-                selected = "1:1"                -- 1:1
-            elseif eWS >= 1.0 then
-                selected = "skipping"           -- Skipping 5:9:1:1
-            elseif eWS >= 0.8 then
-                selected = "2:3"                -- 2:3
-            else
-                selected = "1:2"                -- 1:2 extreme haste
-            end
-        else
-            -- SV ranged-only
-            if eWS > 2.4 then
-                selected = "short_french"       -- Short French 5:4:1:1
-            elseif eWS >= 2.0 then
-                selected = "french"             -- French 5:5:1:1
-            elseif eWS >= 1.3 then
-                selected = "1:1"
-            elseif eWS >= 1.0 then
-                selected = "skipping"
-            elseif eWS >= 0.8 then
-                selected = "2:3"
-            else
-                selected = "1:2"
-            end
-        end
-    end
-    
-    -- Apply rotation
-    if selected and ROTATIONS[selected] then
-        state.currentRotation = selected
-        local rotation = ROTATIONS[selected]
-        state.currentSequence, state.cycleDuration = rotation.buildSequence(eWS)
-        
-        -- Detect rotation change
-        if previousRotation and previousRotation ~= selected then
-            state.rotationChangeTime = GetTime()
-            state.previousRotation = previousRotation
-        end
-    end
-end
-
--- ============================================================================
--- UI Elements
--- ============================================================================
-
-local mainFrame = nil          -- Main container frame
-local timelineFrame = nil      -- The scrolling bar area
-local rotationLabel = nil      -- Current rotation name text
-local ewsLabel = nil           -- eWS display text
-local alertText = nil          -- Rotation change alert
-local clippingText = nil       -- "DON'T CAST" / "MULTI NOW" overlay
-local killCmdIndicator = nil   -- Kill Command CD indicator
-
--- Block pool for timeline
-local MAX_BLOCKS = 40
-local blockPool = {}           -- Pre-created block frames
-
--- Active haste buff icons
-local hasteIcons = {}
-
--- Create a single ability block (reusable)
-local function CreateBlock(parent, index)
-    local block = CreateFrame("Frame", "HunterSuiteWeavingBlock" .. index, parent)
-    block:SetSize(40, 30)
-    
-    local bg = block:CreateTexture(nil, "BACKGROUND")
-    bg:SetAllPoints()
-    bg:SetColorTexture(1, 1, 1, 1)
-    block.bg = bg
-    
-    local border = block:CreateTexture(nil, "BORDER")
-    border:SetPoint("TOPLEFT", -1, 1)
-    border:SetPoint("BOTTOMRIGHT", 1, -1)
-    border:SetColorTexture(0, 0, 0, 0.8)
-    block.border = border
-    
-    -- Ability icon
-    local icon = block:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(14, 14)
-    icon:SetPoint("LEFT", block, "LEFT", 2, 0)
-    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
-    block.icon = icon
-    
-    local text = block:CreateFontString(nil, "OVERLAY")
-    text:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
-    text:SetPoint("LEFT", icon, "RIGHT", 1, 0)
-    text:SetTextColor(1, 1, 1, 1)
-    block.text = text
-    
-    block:Hide()
-    return block
-end
-
--- Create the main weaving bar UI
-function WeavingBar:CreateUI()
-    if mainFrame then return mainFrame end
-    
-    local db = HunterSuite.db.weavingBar
-    
-    -- Main container
-    mainFrame = CreateFrame("Frame", "HunterSuiteWeavingBar", UIParent, "BackdropTemplate")
-    mainFrame:SetSize(db.barWidth + 12, db.barHeight + 36)
-    mainFrame:SetPoint(db.position.point or "CENTER", UIParent, db.position.point or "CENTER", 
-        db.position.x or 0, db.position.y or -160)
-    mainFrame:SetFrameStrata("MEDIUM")
-    mainFrame:SetMovable(true)
-    mainFrame:EnableMouse(true)
-    mainFrame:RegisterForDrag("LeftButton")
-    mainFrame:SetClampedToScreen(true)
-    
-    mainFrame:SetBackdrop({
-        bgFile = [[Interface\Buttons\WHITE8X8]],
-        edgeFile = [[Interface\Buttons\WHITE8X8]],
-        tile = false,
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 }
-    })
-    mainFrame:SetBackdropColor(0.04, 0.04, 0.06, 0.92)
-    mainFrame:SetBackdropBorderColor(0.25, 0.25, 0.3, 1)
-    
-    -- Header area: rotation name (left) and eWS (right)
-    rotationLabel = mainFrame:CreateFontString(nil, "OVERLAY")
-    rotationLabel:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE")
-    rotationLabel:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 6, -4)
-    rotationLabel:SetTextColor(0.4, 1.0, 0.4, 1)
-    rotationLabel:SetText("French 5:5:1:1")
-    
-    ewsLabel = mainFrame:CreateFontString(nil, "OVERLAY")
-    ewsLabel:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
-    ewsLabel:SetPoint("TOPRIGHT", mainFrame, "TOPRIGHT", -6, -5)
-    ewsLabel:SetTextColor(0.7, 0.7, 0.7, 1)
-    ewsLabel:SetText("eWS: 2.17s")
-    
-    -- Timeline area (the scrolling bar)
-    timelineFrame = CreateFrame("Frame", "HunterSuiteWeavingTimeline", mainFrame)
-    timelineFrame:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 6, -18)
-    timelineFrame:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -6, 16)
-    timelineFrame:SetClipsChildren(true)  -- Clip blocks outside the frame
-    
-    -- Timeline background
-    local tlBg = timelineFrame:CreateTexture(nil, "BACKGROUND")
-    tlBg:SetAllPoints()
-    tlBg:SetColorTexture(0.06, 0.06, 0.08, 1)
-    
-    -- "Now" marker - vertical line on the left
-    local nowLine = timelineFrame:CreateTexture(nil, "OVERLAY", nil, 7)
-    nowLine:SetSize(2, db.barHeight)
-    nowLine:SetPoint("TOPLEFT", timelineFrame, "TOPLEFT", 0, 0)
-    nowLine:SetColorTexture(1, 1, 1, 0.9)
-    
-    -- Create block pool
-    for i = 1, MAX_BLOCKS do
-        blockPool[i] = CreateBlock(timelineFrame, i)
-    end
-    
-    -- Clipping warning overlay text
-    clippingText = mainFrame:CreateFontString(nil, "OVERLAY", nil, 7)
-    clippingText:SetFont(STANDARD_TEXT_FONT, 12, "OUTLINE")
-    clippingText:SetPoint("CENTER", timelineFrame, "CENTER", 0, 0)
-    clippingText:SetTextColor(1, 0.3, 0.3, 1)
-    clippingText:Hide()
-    
-    -- Rotation change alert text
-    alertText = mainFrame:CreateFontString(nil, "OVERLAY", nil, 7)
-    alertText:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
-    alertText:SetPoint("CENTER", mainFrame, "CENTER", 0, 0)
-    alertText:SetTextColor(1, 1, 0.3, 1)
-    alertText:Hide()
-    
-    -- Haste buff icons (bottom row)
-    local buffNames = {"RF", "Hawk", "BL", "Drums", "DST"}
-    for i, name in ipairs(buffNames) do
-        local icon = mainFrame:CreateFontString(nil, "OVERLAY")
-        icon:SetFont(STANDARD_TEXT_FONT, 8, "OUTLINE")
-        icon:SetPoint("BOTTOMLEFT", mainFrame, "BOTTOMLEFT", 6 + (i-1) * 42, 3)
-        icon:SetTextColor(0.5, 0.5, 0.5, 0.6)
-        icon:SetText(name)
-        hasteIcons[i] = { text = icon, name = name }
-    end
-    
-    -- Kill Command indicator
-    killCmdIndicator = mainFrame:CreateFontString(nil, "OVERLAY")
-    killCmdIndicator:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
-    killCmdIndicator:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -6, 3)
-    killCmdIndicator:SetTextColor(0.5, 0.5, 0.5, 0.6)
-    killCmdIndicator:SetText("KC")
-    
-    -- Dragging (only in edit mode)
-    mainFrame:SetScript("OnDragStart", function(self)
-        if HunterSuite.state.editMode then
-            self:StartMoving()
-        end
-    end)
-    mainFrame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, _, x, y = self:GetPoint()
-        HunterSuite.db.weavingBar.position.point = point
-        HunterSuite.db.weavingBar.position.x = x
-        HunterSuite.db.weavingBar.position.y = y
-    end)
-    
-    mainFrame:Hide()
-    
-    self.mainFrame = mainFrame
-    return mainFrame
-end
-
--- ============================================================================
--- Timeline Rendering
--- ============================================================================
-
--- Pixels per second for the timeline
-local function GetPixelsPerSecond()
-    if not timelineFrame then return 40 end
-    local db = HunterSuite.db.weavingBar
-    local timeWindow = db.timeWindow or 10  -- Seconds visible on bar
-    return timelineFrame:GetWidth() / timeWindow
-end
-
--- Render the timeline blocks based on current rotation and time
-function WeavingBar:RenderTimeline()
-    if not timelineFrame or not state.currentSequence then return end
-    
-    local db = HunterSuite.db.weavingBar
-    local now = GetTime()
-    local pps = GetPixelsPerSecond()
-    local barHeight = timelineFrame:GetHeight()
-    local barWidth = timelineFrame:GetWidth()
-    local timeWindow = db.timeWindow or 10
-    
-    -- Calculate cycle position
-    local cycleTime = 0
-    if state.lastAutoTime > 0 and state.cycleDuration > 0 then
-        local elapsed = now - state.cycleStartTime
-        cycleTime = elapsed % state.cycleDuration
-    end
-    
-    -- Hide all blocks first
-    for i = 1, MAX_BLOCKS do
-        blockPool[i]:Hide()
-    end
-    
-    local blockIndex = 0
-    local sequence = state.currentSequence
-    local cycleDur = state.cycleDuration
-    
-    if not sequence or cycleDur <= 0 then return end
-    
-    -- Render 3 cycles worth (past, current, future) to ensure coverage
-    for cycleOffset = -1, 2 do
-        for _, step in ipairs(sequence) do
-            local stepTime = step.t + (cycleOffset * cycleDur)
-            local relativeTime = stepTime - cycleTime  -- Time relative to now
-            
-            -- Only render if within visible window
-            if relativeTime >= -0.5 and relativeTime <= timeWindow then
-                blockIndex = blockIndex + 1
-                if blockIndex > MAX_BLOCKS then break end
-                
-                local block = blockPool[blockIndex]
-                local info = ABILITY_INFO[step.ability]
-                if info then
-                    local xPos = relativeTime * pps
-                    local blockWidth = math.max(4, (step.duration > 0 and step.duration or 0.15) * pps)
-                    local blockHeight = barHeight - 2
-                    
-                    -- Melee abilities on bottom half
-                    block:ClearAllPoints()
-                    if info.isMelee then
-                        blockHeight = (barHeight * 0.35) - 1
-                        block:SetPoint("BOTTOMLEFT", timelineFrame, "BOTTOMLEFT", xPos, 1)
-                    else
-                        blockHeight = (barHeight * 0.65) - 1
-                        block:SetPoint("TOPLEFT", timelineFrame, "TOPLEFT", xPos, -1)
-                    end
-                    
-                    block:SetSize(blockWidth, blockHeight)
-                    block.bg:SetColorTexture(info.color[1], info.color[2], info.color[3], 0.85)
-                    
-                    -- Set ability icon
-                    if info.icon then
-                        local iconSize = math.min(blockHeight - 2, blockWidth - 2, 14)
-                        block.icon:SetSize(iconSize, iconSize)
-                        block.icon:SetTexture(info.icon)
-                        block.icon:Show()
-                    else
-                        block.icon:Hide()
-                    end
-                    
-                    -- Only show text label if block is wide enough
-                    if blockWidth > 20 then
-                        block.text:SetText(info.label)
-                        block.text:Show()
-                    else
-                        block.text:Hide()
-                    end
-                    
-                    -- Dim past events
-                    if relativeTime < 0 then
-                        block:SetAlpha(0.3)
-                    else
-                        block:SetAlpha(1.0)
-                    end
-                    
-                    block:Show()
-                end
-            end
-        end
-        if blockIndex >= MAX_BLOCKS then break end
-    end
-end
-
--- ============================================================================
--- Header & Status Updates
--- ============================================================================
-
-function WeavingBar:UpdateHeader()
-    if not rotationLabel or not ewsLabel then return end
-    
-    local rotation = state.currentRotation and ROTATIONS[state.currentRotation]
-    if rotation then
-        rotationLabel:SetText(rotation.name)
-    else
-        rotationLabel:SetText("--")
-    end
-    
-    ewsLabel:SetText(string.format("eWS: %.2fs", state.eWS))
-end
-
-function WeavingBar:UpdateHasteIcons()
-    if #hasteIcons == 0 then return end
-    
-    local now = GetTime()
-    local buffs = {
-        { active = state.hasRapidFire,  expires = state.rapidFireExpires },
-        { active = state.hasQuickShots, expires = state.quickShotsExpires },
-        { active = state.hasBloodlust,  expires = state.bloodlustExpires },
-        { active = state.hasDrums,      expires = state.drumsExpires },
-        { active = state.hasDST,        expires = state.dstExpires },
-    }
-    
-    for i, info in ipairs(buffs) do
-        local icon = hasteIcons[i]
-        if icon then
-            if info.active then
-                local remaining = info.expires - now
-                if remaining > 0 then
-                    icon.text:SetText(string.format("%s:%.0f", icon.name, remaining))
-                else
-                    icon.text:SetText(icon.name)
-                end
-                icon.text:SetTextColor(0.2, 1.0, 0.2, 1)
-            else
-                icon.text:SetText(icon.name)
-                icon.text:SetTextColor(0.5, 0.5, 0.5, 0.4)
-            end
-        end
-    end
-end
-
-function WeavingBar:UpdateClippingWarning()
-    if not clippingText then return end
-    
-    if not state.isAutoShooting or state.lastAutoTime <= 0 then
-        clippingText:Hide()
-        return
-    end
-    
-    local now = GetTime()
-    local timeSinceAuto = now - state.lastAutoTime
-    local timeToNextAuto = state.eWS - timeSinceAuto
-    
-    -- Warning: about to clip auto shot with Steady
-    if timeToNextAuto > 0 and timeToNextAuto < STEADY_CAST and timeToNextAuto > MULTI_CAST then
-        -- There's time for Multi/Arcane but not Steady
-        clippingText:SetText("MULTI/ARC NOW")
-        clippingText:SetTextColor(1, 0.8, 0.1, 1)
-        clippingText:Show()
-    elseif timeToNextAuto > 0 and timeToNextAuto < 0.5 then
-        -- Don't cast anything, auto about to fire
-        clippingText:SetText("WAIT FOR AUTO")
-        clippingText:SetTextColor(1, 0.3, 0.3, 1)
-        clippingText:Show()
-    else
-        clippingText:Hide()
-    end
-end
-
-function WeavingBar:UpdateRotationAlert()
-    if not alertText then return end
-    
-    local now = GetTime()
-    local alertDuration = 2.0  -- Show alert for 2 seconds
-    
-    if state.rotationChangeTime > 0 and (now - state.rotationChangeTime) < alertDuration then
-        local rotation = ROTATIONS[state.currentRotation]
-        if rotation then
-            alertText:SetText(">> " .. rotation.name .. " <<")
-            -- Flash effect
-            local alpha = 0.5 + 0.5 * math.abs(math.sin((now - state.rotationChangeTime) * 4))
-            alertText:SetAlpha(alpha)
-            alertText:Show()
-        end
-    else
-        alertText:Hide()
-        state.rotationChangeTime = 0
-    end
-end
-
-function WeavingBar:UpdateKillCommand()
-    if not killCmdIndicator then return end
-    if not state.isBM then
-        killCmdIndicator:Hide()
-        return
-    end
-    
-    killCmdIndicator:Show()
-    local start, duration = GetSpellCooldown(SPELL_KILL_COMMAND)
-    if start and start > 0 and duration and duration > 0 then
-        local remaining = (start + duration) - GetTime()
-        if remaining > 0 then
-            killCmdIndicator:SetText(string.format("KC:%.0f", remaining))
-            killCmdIndicator:SetTextColor(0.6, 0.6, 0.6, 0.8)
-        else
-            killCmdIndicator:SetText("KC: RDY")
-            killCmdIndicator:SetTextColor(0.2, 1.0, 0.2, 1)
-        end
-    else
-        killCmdIndicator:SetText("KC: RDY")
-        killCmdIndicator:SetTextColor(0.2, 1.0, 0.2, 1)
-    end
-end
-
--- ============================================================================
--- Event Handling
--- ============================================================================
-
-function WeavingBar:OnEvent(event, ...)
-    if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
-        state.playerGUID = UnitGUID("player")
-        self:DetectSpec()
-        self:UpdateHaste()
-        self:SelectRotation()
-        
-    elseif event == "UNIT_RANGEDDAMAGE" then
-        local unit = ...
-        if unit == "player" then
-            self:UpdateHaste()
-            self:SelectRotation()
-        end
-        
-    elseif event == "UNIT_AURA" then
-        local unit = ...
-        if unit == "player" then
-            local oldRF = state.hasRapidFire
-            local oldQS = state.hasQuickShots
-            local oldBL = state.hasBloodlust
-            local oldDrums = state.hasDrums
-            local oldDST = state.hasDST
-            
-            self:UpdateHaste()
-            
-            -- Check if haste buffs changed
-            if oldRF ~= state.hasRapidFire or oldQS ~= state.hasQuickShots or
-               oldBL ~= state.hasBloodlust or oldDrums ~= state.hasDrums or
-               oldDST ~= state.hasDST then
-                self:SelectRotation()
-            end
-        end
-        
-    elseif event == "CHARACTER_POINTS_CHANGED" or event == "PLAYER_TALENT_UPDATE" then
-        self:DetectSpec()
-        self:UpdateHaste()
-        self:SelectRotation()
-        
-    elseif event == "UNIT_SPELLCAST_SUCCEEDED" then
-        local unit = ...
-        local spellId = select(3, ...)
-        local spellName = spellId and GetSpellInfo(spellId) or select(2, ...)
-        
-        if unit == "player" then
-            if spellId == SPELL_AUTO_SHOT or spellName == (GetSpellInfo(SPELL_AUTO_SHOT)) then
-                local now = GetTime()
-                state.lastAutoTime = now
-                
-                -- Sync cycle: if we don't have a cycle start, set it
-                if state.cycleStartTime <= 0 then
-                    state.cycleStartTime = now
-                end
-                
-                -- Re-sync cycle if drift is too large
-                if state.cycleDuration > 0 then
-                    local elapsed = now - state.cycleStartTime
-                    local cyclePos = elapsed % state.cycleDuration
-                    -- If we're within 0.2s of a cycle boundary, re-sync
-                    if cyclePos < 0.2 or (state.cycleDuration - cyclePos) < 0.2 then
-                        state.cycleStartTime = now
-                    end
-                end
-            end
-        end
-        
-    elseif event == "UNIT_SPELLCAST_START" then
-        local unit = ...
-        if unit == "player" then
-            local spellName, _, _, _, endTime = UnitCastingInfo("player")
-            if spellName then
-                state.isCasting = true
-                state.castEndTime = endTime and (endTime / 1000) or (GetTime() + 1.5)
-                
-                -- Identify cast
-                if spellName == GetSpellInfo(SPELL_STEADY_SHOT) then
-                    state.currentCastAbility = "steady"
-                elseif spellName == GetSpellInfo(SPELL_MULTI_SHOT) then
-                    state.currentCastAbility = "multi"
-                elseif spellName == GetSpellInfo(SPELL_ARCANE_SHOT) then
-                    state.currentCastAbility = "arcane"
-                else
-                    state.currentCastAbility = nil
-                end
-            end
-        end
-        
-    elseif event == "UNIT_SPELLCAST_STOP" or event == "UNIT_SPELLCAST_INTERRUPTED" then
-        local unit = ...
-        if unit == "player" then
-            state.isCasting = false
-            state.currentCastAbility = nil
-        end
-        
-    elseif event == "START_AUTOREPEAT_SPELL" then
-        state.isAutoShooting = true
-        
-    elseif event == "STOP_AUTOREPEAT_SPELL" then
-        state.isAutoShooting = false
-        state.lastAutoTime = 0
-        state.cycleStartTime = 0
-        
-    elseif event == "SPELL_UPDATE_COOLDOWN" then
-        -- GCD tracking
-        local start, duration = GetSpellCooldown(SPELL_ARCANE_SHOT)
-        if start and start > 0 and duration and duration > 0 and duration <= 1.5 then
-            state.gcdStart = start
-            state.gcdDuration = duration
-        end
-        
-    elseif event == "PLAYER_REGEN_DISABLED" then
-        -- Entering combat
-        if HunterSuite.db.weavingBar.enabled and mainFrame then
-            mainFrame:SetAlpha(HunterSuite.db.weavingBar.alpha or 1)
-        end
-        
-    elseif event == "PLAYER_REGEN_ENABLED" then
-        -- Leaving combat
-        if mainFrame then
-            local oocAlpha = HunterSuite.db.weavingBar.oocAlpha
-            if oocAlpha == nil then oocAlpha = 0.3 end
-            mainFrame:SetAlpha(oocAlpha)
-        end
-        state.cycleStartTime = 0
-        state.lastAutoTime = 0
-    end
-end
-
--- ============================================================================
--- OnUpdate - Main render loop
--- ============================================================================
-
-local updateTimer = 0
-local slowUpdateTimer = 0
-
-function WeavingBar:OnUpdate(elapsed)
-    if not mainFrame then return end
-    
-    -- Edit mode: show sample with animated scrolling
-    if HunterSuite.state.editMode then
-        mainFrame:Show()
-        mainFrame:SetAlpha(1)
-        rotationLabel:SetText("French 5:5:1:1")
-        ewsLabel:SetText("eWS: 2.17s")
-        -- Build a sample sequence for display
-        if not state.currentSequence or state.currentRotation ~= "french" then
-            state.currentSequence, state.cycleDuration = ROTATIONS["french"].buildSequence(2.17)
-            state.currentRotation = "french"
-        end
-        -- Keep cycle start time running so the bar scrolls
-        if state.cycleStartTime <= 0 then
-            state.cycleStartTime = GetTime()
-        end
-        state.lastAutoTime = state.cycleStartTime  -- Needed for render
-        self:RenderTimeline()
-        return
-    end
-    
-    local db = HunterSuite.db.weavingBar
-    
-    if not db.enabled or not HunterSuite.state.isHunter then
-        mainFrame:Hide()
-        return
-    end
-    
-    -- Show/hide based on auto shooting state
-    if not state.isAutoShooting then
-        if db.hideWhenInactive then
-            mainFrame:Hide()
+            state.isBM = (rank or 0) > 0
             return
         end
     end
-    
-    mainFrame:Show()
-    
-    -- Fast updates (every frame): timeline rendering
-    self:RenderTimeline()
-    self:UpdateClippingWarning()
-    self:UpdateRotationAlert()
-    
-    -- Slow updates (~4 Hz): header, buff icons, kill command
-    slowUpdateTimer = slowUpdateTimer + elapsed
-    if slowUpdateTimer >= 0.25 then
-        slowUpdateTimer = 0
-        self:UpdateHeader()
-        self:UpdateHasteIcons()
-        self:UpdateKillCommand()
-        
-        -- Re-read eWS periodically (catches haste rating changes from gear procs)
-        self:UpdateHaste()
-        
-        -- Re-check rotation if eWS changed significantly
-        local newEWS = state.eWS
-        if state.currentSequence then
-            local oldCycleDur = state.cycleDuration
-            local _, newCycleDur = ROTATIONS[state.currentRotation].buildSequence(newEWS)
-            if math.abs(newCycleDur - oldCycleDur) > 0.1 then
-                self:SelectRotation()
+end
+
+local function Active(key) return state[key] > GetTime() end
+
+function WB:SelectRotation()
+    local eWS, weave, bm = state.eWS, self.db.weave, state.isBM
+    local pick
+    if weave then
+        if bm then
+            if eWS < 0.94 then pick = "max_weave"
+            elseif Active("rapidFire") then
+                pick = (Active("bloodlust") or (Active("quickShots") and Active("drums"))) and "max_weave" or "rf_weave"
+            elseif Active("quickShots") or Active("bloodlust") then pick = "half_weave"
+            else pick = "french_weave" end
+        else
+            pick = eWS < 2.0 and "half_weave" or "french_weave"
+        end
+    else
+        if bm then
+            if eWS >= 2.0 then pick = "french"
+            elseif eWS >= 1.8 then pick = "long_french"
+            elseif eWS >= 1.3 then pick = "1:1"
+            elseif eWS >= 1.0 then pick = "skipping"
+            elseif eWS >= 0.8 then pick = "2:3"
+            else pick = "1:2" end
+        else
+            if eWS > 2.4 then pick = "short_french"
+            elseif eWS >= 2.0 then pick = "french"
+            elseif eWS >= 1.3 then pick = "1:1"
+            elseif eWS >= 1.0 then pick = "skipping"
+            elseif eWS >= 0.8 then pick = "2:3"
+            else pick = "1:2" end
+        end
+    end
+    local rot = ROTATIONS[pick]
+    if not rot then return end
+    if state.rotation and state.rotation ~= pick then state.changedAt = GetTime() end
+    state.rotation = pick
+    state.sequence, state.cycle = rot.buildSequence(eWS)
+end
+
+---------------------------------------------------------------------------
+-- Frame
+---------------------------------------------------------------------------
+
+local MAX_BLOCKS = 40
+
+function WB:Build()
+    local db = self.db
+    local f = UI:Element("HunterSuiteWeavingBar", db, "Weaving Bar")
+    f:SetSize(db.width, db.height + 30)
+    UI:Surface(f, { radius = 6, color = "bg", border = { 1, 1, 1, 0.08 }, shadow = true })
+
+    f.title = UI:Text(f, { size = 11, color = "accent" })
+    f.title:SetPoint("TOPLEFT", 8, -6)
+    f.ews = UI:Text(f, { size = 10, color = "textDim" })
+    f.ews:SetPoint("TOPRIGHT", -8, -7)
+
+    local tl = CreateFrame("Frame", nil, f)
+    tl:SetPoint("TOPLEFT", 6, -22)
+    tl:SetPoint("BOTTOMRIGHT", -6, 6)
+    tl:SetClipsChildren(true)
+    local bg = tl:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetColorTexture(UI:Color("track"))
+    local nowLine = tl:CreateTexture(nil, "OVERLAY", nil, 7)
+    nowLine:SetColorTexture(1, 1, 1, 0.9)
+    nowLine:SetWidth(2)
+    nowLine:SetPoint("TOPLEFT")
+    nowLine:SetPoint("BOTTOMLEFT")
+    f.timeline = tl
+
+    f.blocks = {}
+    for i = 1, MAX_BLOCKS do
+        local b = CreateFrame("Frame", nil, tl)
+        b.bg = b:CreateTexture(nil, "BACKGROUND")
+        b.bg:SetAllPoints()
+        b.bg:SetTexture(UI.tex.white)
+        b.icon = b:CreateTexture(nil, "ARTWORK")
+        b.icon:SetPoint("LEFT", 2, 0)
+        b.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+        b.text = UI:Text(b, { size = 9, flags = "OUTLINE" })
+        b.text:SetPoint("LEFT", b.icon, "RIGHT", 2, 0)
+        b:Hide()
+        f.blocks[i] = b
+    end
+
+    f.hint = UI:Text(tl, { size = 12, flags = "OUTLINE", color = "danger" })
+    f.hint:SetPoint("CENTER")
+    f:SetScript("OnUpdate", function(_, elapsed) WB:OnUpdate(elapsed) end)
+    f:Hide()
+    self.frame = f
+    HS.Movers:Register(f, { label = "Weaving Bar", defaultPath = "weavingBar.position", module = "weavingBar" })
+end
+
+function WB:Render(now)
+    local f = self.frame
+    local tl = f.timeline
+    for i = 1, MAX_BLOCKS do f.blocks[i]:Hide() end
+    local seq, cycle = state.sequence, state.cycle
+    if not seq or cycle <= 0 then return end
+    local window = self.db.window or 10
+    local pps = tl:GetWidth() / window
+    local h = tl:GetHeight()
+    local pos = state.lastAuto > 0 and ((now - state.cycleStart) % cycle) or 0
+    local n = 0
+    for offset = -1, 2 do
+        for _, step in ipairs(seq) do
+            local rel = step.t + offset * cycle - pos
+            if rel >= -0.5 and rel <= window and n < MAX_BLOCKS then
+                n = n + 1
+                local info = ABILITY_INFO[step.ability]
+                local b = f.blocks[n]
+                local w = math.max(4, ((step.duration > 0) and step.duration or 0.15) * pps)
+                local bh = info.melee and (h * 0.35 - 1) or (h * 0.65 - 1)
+                b:ClearAllPoints()
+                if info.melee then
+                    b:SetPoint("BOTTOMLEFT", tl, "BOTTOMLEFT", rel * pps, 1)
+                else
+                    b:SetPoint("TOPLEFT", tl, "TOPLEFT", rel * pps, -1)
+                end
+                b:SetSize(w, bh)
+                b.bg:SetVertexColor(info.color[1], info.color[2], info.color[3], 0.85)
+                local isz = math.min(bh - 2, w - 2, 14)
+                b.icon:SetSize(isz, isz)
+                b.icon:SetTexture(info.icon)
+                b.icon:SetShown(isz >= 6)
+                b.text:SetText(w > 22 and info.label or "")
+                b:SetAlpha(rel < 0 and 0.3 or 1)
+                b:Show()
             end
         end
     end
 end
 
--- ============================================================================
--- UpdateUI (called from settings changes)
--- ============================================================================
-
-function WeavingBar:UpdateUI()
-    if not mainFrame then return end
-    
-    local db = HunterSuite.db.weavingBar
-    
-    if not db.enabled or not HunterSuite.state.isHunter then
-        mainFrame:Hide()
+local slow = 0
+function WB:OnUpdate(elapsed)
+    local f = self.frame
+    local now = GetTime()
+    if HS.state.editMode then
+        if state.rotation ~= "french" then
+            state.rotation = "french"
+            state.sequence, state.cycle = ROTATIONS.french.buildSequence(2.17)
+        end
+        if state.cycleStart <= 0 then state.cycleStart = now end
+        state.lastAuto = state.cycleStart
+        f.title:SetText(ROTATIONS.french.name)
+        f.ews:SetText("eWS 2.17s")
+        self:Render(now)
         return
     end
-    
-    mainFrame:SetSize(db.barWidth + 12, db.barHeight + 36)
-    mainFrame:SetScale(db.scale or 1)
-    mainFrame:SetAlpha(db.alpha or 1)
-    
-    if HunterSuite.state.editMode then
-        mainFrame:Show()
+    if not state.autoRepeat and self.db.hideIdle then
+        f:Hide()
+        return
+    end
+    self:Render(now)
+
+    local sinceAuto = now - state.lastAuto
+    local toNext = state.eWS - sinceAuto
+    if state.autoRepeat and state.lastAuto > 0 and toNext > 0 and toNext < 0.5 then
+        f.hint:SetText("Wait for Auto")
+        f.hint:SetTextColor(UI:Color("danger"))
+        f.hint:Show()
+    elseif state.autoRepeat and state.lastAuto > 0 and toNext > MULTI_CAST and toNext < STEADY_CAST then
+        f.hint:SetText("Multi / Arcane now")
+        f.hint:SetTextColor(UI:Color("warn"))
+        f.hint:Show()
+    elseif now - state.changedAt < 2 and state.rotation then
+        f.hint:SetText(ROTATIONS[state.rotation].name)
+        f.hint:SetTextColor(UI:Color("accent"))
+        f.hint:Show()
+    else
+        f.hint:Hide()
+    end
+
+    slow = slow + elapsed
+    if slow >= 0.25 then
+        slow = 0
+        local old = state.cycle
+        self:ScanBuffs()
+        if state.rotation then
+            local _, cyc = ROTATIONS[state.rotation].buildSequence(state.eWS)
+            if math.abs(cyc - old) > 0.1 then self:SelectRotation() end
+        end
+        f.title:SetText(state.rotation and ROTATIONS[state.rotation].name or "--")
+        f.ews:SetFormattedText("eWS %.2fs", state.eWS)
     end
 end
 
--- ============================================================================
--- Init
--- ============================================================================
+---------------------------------------------------------------------------
+-- Lifecycle
+---------------------------------------------------------------------------
 
-function WeavingBar:Init()
-    self:CreateUI()
-    self:UpdateUI()
-    
-    state.playerGUID = UnitGUID("player")
-    self:DetectSpec()
-    self:UpdateHaste()
-    self:SelectRotation()
-    
-    -- Register events
-    local eventFrame = CreateFrame("Frame")
-    eventFrame:RegisterEvent("PLAYER_LOGIN")
-    eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    eventFrame:RegisterEvent("UNIT_RANGEDDAMAGE")
-    eventFrame:RegisterEvent("UNIT_AURA")
-    eventFrame:RegisterEvent("CHARACTER_POINTS_CHANGED")
-    eventFrame:RegisterEvent("PLAYER_TALENT_UPDATE")
-    eventFrame:RegisterEvent("UNIT_SPELLCAST_SUCCEEDED")
-    eventFrame:RegisterEvent("UNIT_SPELLCAST_START")
-    eventFrame:RegisterEvent("UNIT_SPELLCAST_STOP")
-    eventFrame:RegisterEvent("UNIT_SPELLCAST_INTERRUPTED")
-    eventFrame:RegisterEvent("START_AUTOREPEAT_SPELL")
-    eventFrame:RegisterEvent("STOP_AUTOREPEAT_SPELL")
-    eventFrame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
-    eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
-    eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-    
-    eventFrame:SetScript("OnEvent", function(self, event, ...)
-        WeavingBar:OnEvent(event, ...)
-    end)
-    
-    -- OnUpdate on eventFrame (not mainFrame) so it fires even when mainFrame is hidden
-    eventFrame:SetScript("OnUpdate", function(self, elapsed)
-        WeavingBar:OnUpdate(elapsed)
-    end)
-    
-    self.eventFrame = eventFrame
+function WB:OnInitialize()
+    self:Build()
+    self.events = HS:Events(self)
 end
+
+function WB:OnEnable()
+    local ev = self.events
+    local function full()
+        self:DetectSpec()
+        self:ScanBuffs()
+        self:SelectRotation()
+    end
+    ev:On("PLAYER_ENTERING_WORLD", full)
+    ev:On("CHARACTER_POINTS_CHANGED", full)
+    ev:On("PLAYER_TALENT_UPDATE", full)
+    ev:On("UNIT_AURA", function() self:ScanBuffs(); self:SelectRotation() end, "player")
+    ev:On("UNIT_SPELLCAST_SUCCEEDED", function(_, _, _, _, spellID)
+        if C.Readable(spellID) ~= S.AUTO_SHOT then return end
+        local now = GetTime()
+        state.lastAuto = now
+        if state.cycleStart <= 0 then state.cycleStart = now end
+        if state.cycle > 0 then
+            local p = (now - state.cycleStart) % state.cycle
+            if p < 0.2 or state.cycle - p < 0.2 then state.cycleStart = now end
+        end
+    end, "player")
+    ev:On("START_AUTOREPEAT_SPELL", function()
+        state.autoRepeat = true
+        self.frame:SetAlpha(1)
+        self.frame:Show()
+    end)
+    ev:On("STOP_AUTOREPEAT_SPELL", function()
+        state.autoRepeat = false
+        state.lastAuto, state.cycleStart = 0, 0
+    end)
+    ev:On("PLAYER_REGEN_ENABLED", function()
+        state.lastAuto, state.cycleStart = 0, 0
+        self.frame:SetAlpha(self.db.oocAlpha or 0.45)
+    end)
+    ev:On("PLAYER_REGEN_DISABLED", function() self.frame:SetAlpha(1) end)
+    self:Refresh()
+    full()
+end
+
+function WB:OnDisable()
+    self.events:OffAll()
+    self.frame:Hide()
+end
+
+function WB:Refresh()
+    local f, db = self.frame, self.db
+    f:SetSize(db.width, db.height + 30)
+    UI:ApplyPosition(f)
+    if not db.hideIdle then f:Show() end
+end
+
+HS:On("EDIT_MODE", function(on)
+    if not WB.enabled then return end
+    if on then
+        WB.frame:SetAlpha(1)
+        WB.frame:Show()
+    else
+        state.rotation, state.cycleStart, state.lastAuto = nil, 0, 0
+        WB:SelectRotation()
+    end
+end)

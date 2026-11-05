@@ -1,236 +1,160 @@
--- HunterSuite Ammo Module
--- Low ammo warning
+--[[
+    HunterSuite - ammo
+    Ammo counter with low/critical warnings and a "minutes of shooting
+    left" estimate. Hidden for thrown weapons and wands.
+]]
 
-local Ammo = {}
-HunterSuite.Ammo = Ammo
+local _, HS = ...
+local UI, C = HS.UI, HS.Compat
 
-local ammoFrame = nil
-local ammoText = nil
-local ammoSlotId = nil
+local Ammo = HS:NewModule("ammo", { title = "Ammo" })
 
--- Create the ammo warning
-function Ammo:CreateWarning()
-    if ammoFrame then return ammoFrame end
-    
-    local db = HunterSuite.db.ammo
-    
-    ammoFrame = CreateFrame("Frame", "HunterSuiteAmmo", UIParent, "BackdropTemplate")
-    ammoFrame:SetSize(140, 24)
-    ammoFrame:SetPoint(db.position.point or "CENTER", UIParent, db.position.point or "CENTER", db.position.x or 0, db.position.y or 120)
-    ammoFrame:SetFrameStrata("HIGH")
-    ammoFrame:SetMovable(true)
-    ammoFrame:EnableMouse(true)
-    ammoFrame:RegisterForDrag("LeftButton")
-    ammoFrame:SetClampedToScreen(true)
-    
-    ammoFrame:SetBackdrop({
-        bgFile = [[Interface\Buttons\WHITE8X8]],
-        edgeFile = [[Interface\Buttons\WHITE8X8]],
-        tile = false,
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 }
-    })
-    ammoFrame:SetBackdropColor(0.7, 0.2, 0.2, 0.95)
-    ammoFrame:SetBackdropBorderColor(0.9, 0.3, 0.3, 1)
-    
-    ammoText = ammoFrame:CreateFontString(nil, "OVERLAY")
-    ammoText:SetFont(STANDARD_TEXT_FONT, 11, "OUTLINE")
-    ammoText:SetPoint("CENTER", ammoFrame, "CENTER", 0, 0)
-    ammoText:SetText("LOW AMMO!")
-    ammoText:SetTextColor(1, 1, 0.3, 1)
-    
-    -- Pulse animation
-    local ag = ammoFrame:CreateAnimationGroup()
-    ag:SetLooping("REPEAT")
-    
-    local fade1 = ag:CreateAnimation("Alpha")
-    fade1:SetFromAlpha(1)
-    fade1:SetToAlpha(0.5)
-    fade1:SetDuration(0.5)
-    fade1:SetOrder(1)
-    
-    local fade2 = ag:CreateAnimation("Alpha")
-    fade2:SetFromAlpha(0.5)
-    fade2:SetToAlpha(1)
-    fade2:SetDuration(0.5)
-    fade2:SetOrder(2)
-    
-    self.pulseAnim = ag
-    
-    -- Dragging (only in edit mode)
-    ammoFrame:SetScript("OnDragStart", function(self)
-        if HunterSuite.state.editMode then
-            self:StartMoving()
-        end
-    end)
-    ammoFrame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, _, x, y = self:GetPoint()
-        HunterSuite.db.ammo.position.point = point
-        HunterSuite.db.ammo.position.x = x
-        HunterSuite.db.ammo.position.y = y
-    end)
-    
-    -- Tooltip
-    ammoFrame:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine("Ammo Warning", 1, 1, 1)
-        GameTooltip:AddLine("Your ammo is running low!", 1, 0.5, 0.5)
+local AMMO_SLOT = _G.INVSLOT_AMMO or 0
+local RANGED_SLOT = _G.INVSLOT_RANGED or 18
+-- Weapon subclasses that fire ammo: bow, gun, crossbow.
+local AMMO_WEAPONS = { [2] = true, [3] = true, [18] = true }
+local lastSpeed = 3
+
+function Ammo:NeedsAmmo()
+    if UnitUsesAmmo then
+        local uses = C.Readable(UnitUsesAmmo("player"))
+        if uses ~= nil then return uses end
+    end
+    local itemID = GetInventoryItemID("player", RANGED_SLOT)
+    if not itemID then return false end
+    local _, _, _, _, _, classID, subclassID = C.GetItemInfoInstant(itemID)
+    return classID == 2 and AMMO_WEAPONS[subclassID] == true
+end
+
+function Ammo:Build()
+    local f = UI:Element("HunterSuiteAmmo", self.db, "Ammo")
+    f:SetSize(150, 30)
+    UI:Surface(f, { radius = 6, color = "bg", border = { 1, 1, 1, 0.08 }, shadow = true })
+    f.iconFrame = UI:Icon(f, 20)
+    f.iconFrame:SetPoint("LEFT", 6, 0)
+    f.count = UI:Text(f, { size = 14 })
+    f.count:SetPoint("LEFT", f.iconFrame, "RIGHT", 7, 1)
+    f.sub = UI:Text(f, { size = 10, color = "textDim" })
+    f.sub:SetPoint("LEFT", f.count, "RIGHT", 6, -1)
+    f:EnableMouse(true)
+    f:SetScript("OnEnter", function(btn)
+        GameTooltip:SetOwner(btn, "ANCHOR_TOP", 0, 6)
+        local link = GetInventoryItemLink("player", AMMO_SLOT)
+        GameTooltip:AddLine(link or "Ammo", 1, 1, 1)
+        GameTooltip:AddLine(("Low below %d, critical below %d."):format(self.db.low, self.db.critical), 0.75, 0.77, 0.8)
         GameTooltip:Show()
     end)
-    ammoFrame:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
-    
-    ammoFrame:Hide()
-    
-    -- Register events
-    ammoFrame:RegisterEvent("PLAYER_LOGIN")
-    ammoFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-    ammoFrame:RegisterEvent("BAG_UPDATE_DELAYED")
-    ammoFrame:RegisterEvent("UNIT_INVENTORY_CHANGED")
-    ammoFrame:SetScript("OnEvent", function(self, event, ...)
-        Ammo:OnEvent(event, ...)
-    end)
-    
-    self.ammoFrame = ammoFrame
-    return ammoFrame
+    f:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    f:Hide()
+    self.frame = f
+    HS.Movers:Register(f, { label = "Ammo", defaultPath = "ammo.position", module = "ammo" })
 end
 
--- Get ammo slot ID (slot 0 in Classic/TBC)
-function Ammo:GetAmmoSlotId()
-    if ammoSlotId then return ammoSlotId end
-    -- Try API first, fall back to slot 0 (ammo slot in Classic/TBC)
-    ammoSlotId = GetInventorySlotInfo("AmmoSlot") or 0
-    return ammoSlotId
-end
-
--- Handle events
-function Ammo:OnEvent(event, ...)
-    if event == "PLAYER_LOGIN" then
-        self:GetAmmoSlotId()
-        self:CheckAmmo()
-        
-    elseif event == "PLAYER_EQUIPMENT_CHANGED" then
-        local slot = ...
-        if slot == self:GetAmmoSlotId() then
-            self:CheckAmmo()
-        end
-        
-    elseif event == "BAG_UPDATE_DELAYED" then
-        self:CheckAmmo()
-        
-    elseif event == "UNIT_INVENTORY_CHANGED" then
-        local unit = ...
-        if unit == "player" then
-            self:CheckAmmo()
-        end
+function Ammo:Paint(count, level, minutes)
+    local f = self.frame
+    local color = level == "critical" and "danger" or level == "low" and "warn" or "text"
+    local r, g, b = UI:Color(color)
+    f.count:SetText(BreakUpLargeNumbers and BreakUpLargeNumbers(count) or count)
+    f.count:SetTextColor(r, g, b)
+    if level == "none" then
+        f.count:SetText("No ammo")
+        f.count:SetTextColor(UI:Color("danger"))
+        f.sub:SetText("")
+    elseif minutes then
+        f.sub:SetText(minutes >= 1 and ("~%d min"):format(minutes) or "<1 min")
+    else
+        f.sub:SetText("")
     end
+    f.iconFrame.icon:SetTexture(GetInventoryItemTexture("player", AMMO_SLOT) or 132382)
+    UI:SetBorderColor(f, level == "ok" and { 1, 1, 1, 0.08 } or { r, g, b, 0.45 })
+    UI:SetGlow(f, level == "critical" or level == "none", "danger")
+    f:SetWidth(math.max(120, f.count:GetStringWidth() + f.sub:GetStringWidth() + 46))
 end
 
--- Count total ammo of a specific type in bags
-function Ammo:CountAmmoInBags(ammoItemId)
-    local total = 0
-    for bag = 0, 4 do
-        local numSlots = C_Container and C_Container.GetContainerNumSlots(bag) or GetContainerNumSlots(bag)
-        for slot = 1, numSlots do
-            local itemId
-            if C_Container and C_Container.GetContainerItemID then
-                itemId = C_Container.GetContainerItemID(bag, slot)
-            else
-                itemId = GetContainerItemID(bag, slot)
-            end
-            if itemId == ammoItemId then
-                local info
-                if C_Container and C_Container.GetContainerItemInfo then
-                    info = C_Container.GetContainerItemInfo(bag, slot)
-                    total = total + (info and info.stackCount or 0)
-                else
-                    local _, itemCount = GetContainerItemInfo(bag, slot)
-                    total = total + (itemCount or 0)
-                end
-            end
-        end
-    end
-    return total
-end
-
--- Check ammo count
-function Ammo:CheckAmmo()
-    if not ammoFrame then return end
-    
-    local db = HunterSuite.db.ammo
-    
-    if not db.enabled or not HunterSuite.state.isHunter then
-        ammoFrame:Hide()
+function Ammo:Update()
+    local f, db = self.frame, self.db
+    if HS.state.editMode then return end
+    if not self:NeedsAmmo() then
+        f:Hide()
         return
     end
-    
-    local slotId = self:GetAmmoSlotId()
-    if slotId == nil then
-        ammoFrame:Hide()
-        return
+    -- Only the count is trusted: classic-engine clients may return no item ID
+    -- or link for the ammo slot even with arrows equipped.
+    local count = C.Readable(GetInventoryItemCount("player", AMMO_SLOT)) or 0
+    if count <= 1 and not GetInventoryItemTexture("player", AMMO_SLOT) then
+        count = 0 -- an empty slot can report 1
     end
-    
-    -- In TBC Anniversary, GetInventoryItemLink returns nil for ammo slot
-    -- but GetInventoryItemCount works correctly
-    local count = GetInventoryItemCount("player", slotId) or 0
-    
+    local speed = C.Readable(UnitRangedDamage("player"))
+    if speed and speed > 0 then lastSpeed = speed end
+    local minutes = count > 0 and math.floor(count * lastSpeed / 60) or nil
+
+    local level
     if count == 0 then
-        -- No ammo equipped
-        ammoText:SetText("NO AMMO!")
-        ammoFrame:SetBackdropColor(0.8, 0.1, 0.1, 0.95)
-        ammoFrame:Show()
-        if self.pulseAnim then self.pulseAnim:Play() end
-        return
-    end
-    
-    if count <= (db.criticalThreshold or 50) then
-        -- Critical
-        ammoText:SetText("AMMO: " .. count .. " !")
-        ammoFrame:SetBackdropColor(0.8, 0.1, 0.1, 0.95)
-        ammoFrame:Show()
-        if self.pulseAnim then self.pulseAnim:Play() end
-    elseif count <= (db.lowThreshold or 200) then
-        -- Low
-        ammoText:SetText("Ammo: " .. count)
-        ammoFrame:SetBackdropColor(0.7, 0.5, 0.1, 0.95)
-        ammoFrame:Show()
-        if self.pulseAnim then self.pulseAnim:Stop() end
+        level = "none"
+    elseif count <= db.critical then
+        level = "critical"
+    elseif count <= db.low then
+        level = "low"
     else
-        -- OK
-        ammoFrame:Hide()
-        if self.pulseAnim then self.pulseAnim:Stop() end
+        level = "ok"
     end
+
+    if level == "ok" and not db.alwaysShow then
+        f:Hide()
+    else
+        self:Paint(count, level, minutes)
+        if not f:IsShown() then UI:FadeIn(f, 0.2) end
+    end
+
+    if (level == "critical" or level == "none") and self.lastLevel ~= level and self.lastLevel ~= nil and db.sound then
+        C.PlaySound(SOUNDKIT and SOUNDKIT.RAID_WARNING or 8959)
+    end
+    self.lastLevel = level
 end
 
--- Update visibility
-function Ammo:UpdateUI()
-    if not ammoFrame then return end
-    
-    local db = HunterSuite.db.ammo
-    
-    if not db.enabled or not HunterSuite.state.isHunter then
-        ammoFrame:Hide()
-        return
-    end
-    
-    ammoFrame:SetScale(db.scale or 1)
-    ammoFrame:SetAlpha(db.alpha or 1)
-    
-    -- Show in edit mode
-    if HunterSuite.state.editMode then
-        ammoText:SetText("Ammo: 150")
-        ammoFrame:SetBackdropColor(0.7, 0.5, 0.1, 0.95)
-        ammoFrame:Show()
-        if self.pulseAnim then self.pulseAnim:Stop() end
-    else
-        self:CheckAmmo()
-    end
+function Ammo:OnInitialize()
+    self:Build()
+    self.events = HS:Events(self)
 end
 
--- Initialize
-function Ammo:Init()
-    self:CreateWarning()
-    self:UpdateUI()
+function Ammo:OnEnable()
+    local ev = self.events
+    local pending = false
+    local function update()
+        if pending then return end
+        pending = true
+        C_Timer.After(0.3, function()
+            pending = false
+            if self.enabled then self:Update() end
+        end)
+    end
+    ev:On("BAG_UPDATE_DELAYED", update)
+    ev:On("PLAYER_EQUIPMENT_CHANGED", update)
+    ev:On("UNIT_INVENTORY_CHANGED", update, "player")
+    ev:On("UNIT_RANGEDDAMAGE", update, "player")
+    ev:On("PLAYER_ENTERING_WORLD", update)
+    UI:ApplyPosition(self.frame)
+    self:Update()
 end
+
+function Ammo:OnDisable()
+    self.events:OffAll()
+    self.frame:Hide()
+end
+
+function Ammo:Refresh()
+    UI:ApplyPosition(self.frame)
+    self.lastLevel = nil
+    self:Update()
+end
+
+HS:On("EDIT_MODE", function(on)
+    if not Ammo.enabled then return end
+    if on then
+        Ammo:Paint(1240, "low", 62)
+        Ammo.frame:SetAlpha(1)
+        Ammo.frame:Show()
+    else
+        Ammo:Update()
+    end
+end)

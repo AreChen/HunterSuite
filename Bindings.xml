@@ -1,0 +1,4 @@
+<Bindings>
+    <Binding name="CLICK HunterSuiteFeedButton:LeftButton" header="HUNTERSUITE" category="ADDONS"/>
+    <Binding name="CLICK HunterSuiteFeedButton:RightButton" category="ADDONS"/>
+</Bindings>
