@@ -1,6 +1,12 @@
 package-as: HunterSuite
 
+manual-changelog:
+  filename: CHANGELOG.md
+  markup-type: markdown
+
 ignore:
   - README.md
+  - CHANGELOG.md
   - .gitignore
+  - .github
   - "*.zip"
