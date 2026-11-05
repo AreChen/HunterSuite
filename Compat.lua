@@ -466,19 +466,32 @@ end
 C.HasSwingAPI = (_G.C_SwingTimer ~= nil and _G.Enum ~= nil and _G.Enum.PlayerSwingType ~= nil)
 C.SwingType = C.HasSwingAPI and _G.Enum.PlayerSwingType or { MainHand = 0, OffHand = 1, Ranged = 2 }
 
+-- The range check only answers once it's switched on, and the switch is
+-- shared: Blizzard's swing timer frame or another addon can turn it off
+-- again, and then the query reads nil. EnableRangeCheck can fire
+-- PLAYER_SWING_RANGE_UPDATE straight away, so re-arming is throttled.
+local armedAt = {}
 function C.EnableSwingRangeCheck(swingType)
     if C.HasSwingAPI and C_SwingTimer.EnableRangeCheck then
+        armedAt[swingType] = GetTime()
         pcall(C_SwingTimer.EnableRangeCheck, swingType, true)
     end
 end
 
+local function QuerySwingRange(swingType)
+    local ok, res = pcall(C_SwingTimer.IsTargetWithinSwingRange, swingType)
+    if ok then return Readable(res) end
+end
+
 -- true/false, or nil when the client cannot tell.
 function C.IsInSwingRange(swingType)
-    if C.HasSwingAPI and C_SwingTimer.IsTargetWithinSwingRange then
-        local ok, res = pcall(C_SwingTimer.IsTargetWithinSwingRange, swingType)
-        if ok then return Readable(res) end
+    if not (C.HasSwingAPI and C_SwingTimer.IsTargetWithinSwingRange) then return nil end
+    local res = QuerySwingRange(swingType)
+    if res == nil and GetTime() - (armedAt[swingType] or -math.huge) >= 2 then
+        C.EnableSwingRangeCheck(swingType)
+        res = QuerySwingRange(swingType)
     end
-    return nil
+    return res
 end
 
 ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 --[[
     HunterSuite - range and dead zone
     Melee, dead zone (between melee and the 8 yd Auto Shot minimum), in
-    range, or too far. Uses Forever's swing-range checks first, then spell
-    ranges, then LibRangeCheck for the yard estimate.
+    range, or too far. Uses Forever's swing-range checks first, then the
+    Auto Shot range and LibRangeCheck's yard estimate.
 ]]
 
 local _, HS = ...
@@ -92,11 +92,11 @@ function Range:Classify()
         if ok then minR, maxR = C.Readable(a), C.Readable(b) end
     end
 
+    -- No hunter spell works as a melee probe: on Forever Raptor Strike reads
+    -- in range at 30+ yd and Wing Clip reads nothing. Without the swing check,
+    -- melee comes from the yard estimate.
     local melee = C.IsInSwingRange(MELEE)
-    if melee == nil then
-        melee = C.IsSpellInRange(S.Name(S.RAPTOR_STRIKE), "target")
-        if melee == nil then melee = C.IsSpellInRange(S.Name(S.WING_CLIP), "target") end
-    end
+    if melee == nil and maxR then melee = maxR <= 5 end
     local ranged = C.IsInSwingRange(RANGED)
     if ranged == nil then ranged = C.IsSpellInRange(S.AUTO_SHOT, "target") end
 
