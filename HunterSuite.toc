@@ -1,4 +1,4 @@
-## Interface: 16001, 20505
+## Interface: 16001, 20505, 20506
 ## Title: |cffabd473Hunter|r|cffe8eaedSuite|r
 ## Notes: The complete Hunter toolkit for WoW Forever: pet card with one-click feeding and mending, Auto Shot timer with aim window, dead-zone range, trap and sting timers, ammo and aspect alerts.
 ## Author: muggles

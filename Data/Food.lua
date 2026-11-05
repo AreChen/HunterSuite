@@ -1,163 +1,568 @@
 --[[
-    HunterSuite - food table
-    Item ID -> diet type and level. Only used on clients without
-    C_PetInfo.CanPetEatItem (WoW Forever asks the game instead).
+    HunterSuite - pet food table (generated, don't edit by hand)
+    Item -> pet food type and item level for clients without
+    C_PetInfo.CanPetEatItem (TBC Anniversary). WoW Forever asks the game.
+    Built by .claude/skills/huntersuite-style/scripts/gen_food.py from
+    Blizzard's game data: TBC 2.5.6.70577, food types from
+    Forever 1.60.1.70790 (vanilla items) and retail 12.1.7.70740.
 ]]
 
-local _, HunterSuite = ...
+local _, HS = ...
 
--- Food types: Meat, Fish, Cheese, Bread, Fungus, Fruit
--- Format: [itemID] = { type = "FoodType", level = itemLevel }
+local Food = {}
+HS.Food = Food
 
-HunterSuite.FoodDB = {
-    -- ============ MEAT ============
-    -- Common Raw Meats
-    [2672]  = { type = "Meat", level = 5 },   -- Stringy Wolf Meat
-    [769]   = { type = "Meat", level = 5 },   -- Chunk of Boar Meat
-    [2674]  = { type = "Meat", level = 5 },   -- Crawler Claw
-    [723]   = { type = "Meat", level = 5 },   -- Goretusk Liver
-    [1015]  = { type = "Meat", level = 10 },  -- Lean Wolf Flank
-    [2673]  = { type = "Meat", level = 10 },  -- Coyote Meat
-    [2677]  = { type = "Meat", level = 15 },  -- Boar Ribs
-    [2675]  = { type = "Meat", level = 15 },  -- Crawler Meat
-    [1080]  = { type = "Meat", level = 10 },  -- Tough Condor Meat
-    [3173]  = { type = "Meat", level = 10 },  -- Bear Meat
-    [3712]  = { type = "Meat", level = 15 },  -- Turtle Meat
-    [3731]  = { type = "Meat", level = 20 },  -- Lion Meat
-    [12202] = { type = "Meat", level = 25 },  -- Tiger Meat
-    [12203] = { type = "Meat", level = 30 },  -- Red Wolf Meat
-    [12204] = { type = "Meat", level = 35 },  -- Heavy Kodo Meat
-    [12037] = { type = "Meat", level = 20 },  -- Mystery Meat
-    [12184] = { type = "Meat", level = 25 },  -- Raptor Flesh
-    [12223] = { type = "Meat", level = 35 },  -- Meaty Bat Wing
-    [20424] = { type = "Meat", level = 45 },  -- Sandworm Meat
-    [27674] = { type = "Meat", level = 55 },  -- Ravager Flesh
-    [27677] = { type = "Meat", level = 60 },  -- Chunk o' Basilisk
-    [27678] = { type = "Meat", level = 62 },  -- Clefthoof Meat
-    [27681] = { type = "Meat", level = 65 },  -- Serpent Flesh
-    [31670] = { type = "Meat", level = 65 },  -- Raptor Ribs
-    [31671] = { type = "Meat", level = 68 },  -- Bat Flesh
-    [35562] = { type = "Meat", level = 70 },  -- Bear Flank
-    -- Spider Meats
-    [2251]  = { type = "Meat", level = 5 },   -- Gooey Spider Leg
-    [1081]  = { type = "Meat", level = 10 },  -- Crisp Spider Meat
-    [12205] = { type = "Meat", level = 20 },  -- White Spider Meat
-    [12206] = { type = "Meat", level = 35 },  -- Tender Crab Meat
-    -- Scorpid/Buzzard Meats
-    [3404]  = { type = "Meat", level = 20 },  -- Buzzard Wing
-    [5467]  = { type = "Meat", level = 25 },  -- Kodo Meat
-    [5468]  = { type = "Meat", level = 30 },  -- Soft Frenzy Flesh
-    [5471]  = { type = "Meat", level = 35 },  -- Stag Meat
-    [5472]  = { type = "Meat", level = 40 },  -- Scorpid Stinger
-    -- Other Meats
-    [3730]  = { type = "Meat", level = 15 },  -- Big Bear Meat
-    [12208] = { type = "Meat", level = 40 },  -- Tender Wolf Meat
-    
-    -- Cooked Meats
-    [2680]  = { type = "Meat", level = 5 },   -- Spiced Wolf Meat
-    [2681]  = { type = "Meat", level = 10 },  -- Roasted Boar Meat
-    [724]   = { type = "Meat", level = 15 },  -- Goretusk Liver Pie
-    [1017]  = { type = "Meat", level = 20 },  -- Seasoned Wolf Kabob
-    [3220]  = { type = "Meat", level = 25 },  -- Blood Sausage
-    [3726]  = { type = "Meat", level = 25 },  -- Big Bear Steak
-    [3727]  = { type = "Meat", level = 30 },  -- Hot Lion Chops
-    [3728]  = { type = "Meat", level = 30 },  -- Tasty Lion Steak
-    [12213] = { type = "Meat", level = 35 },  -- Carrion Surprise
-    [12224] = { type = "Meat", level = 40 },  -- Roast Raptor
-    [13851] = { type = "Meat", level = 45 },  -- Hot Wolf Ribs
-    [18045] = { type = "Meat", level = 45 },  -- Tender Wolf Steak
-    [27687] = { type = "Meat", level = 55 },  -- Roasted Clefthoof
-    [30816] = { type = "Meat", level = 55 },  -- Grilled Mudfish
-    [33867] = { type = "Meat", level = 65 },  -- Broiled Bloodfin
-    [33872] = { type = "Meat", level = 70 },  -- Spicy Hot Talbuk
-    
-    -- ============ FISH ============
-    -- Raw Fish
-    [6291]  = { type = "Fish", level = 5 },   -- Raw Brilliant Smallfish
-    [6303]  = { type = "Fish", level = 5 },   -- Raw Slitherskin Mackerel
-    [6289]  = { type = "Fish", level = 10 },  -- Raw Longjaw Mud Snapper
-    [6317]  = { type = "Fish", level = 15 },  -- Raw Loch Frenzy
-    [6358]  = { type = "Fish", level = 15 },  -- Oily Blackmouth
-    [6361]  = { type = "Fish", level = 20 },  -- Raw Rainbow Fin Albacore
-    [6362]  = { type = "Fish", level = 25 },  -- Raw Rockscale Cod
-    [8365]  = { type = "Fish", level = 30 },  -- Raw Mithril Head Trout
-    [13754] = { type = "Fish", level = 35 },  -- Raw Glossy Mightfish
-    [13755] = { type = "Fish", level = 40 },  -- Winter Squid
-    [13756] = { type = "Fish", level = 40 },  -- Raw Summer Bass
-    [13889] = { type = "Fish", level = 45 },  -- Raw Whitescale Salmon
-    [27422] = { type = "Fish", level = 55 },  -- Barbed Gill Trout
-    [27425] = { type = "Fish", level = 55 },  -- Spotted Feltail
-    [27429] = { type = "Fish", level = 60 },  -- Zangarian Sporefish
-    [27435] = { type = "Fish", level = 60 },  -- Figluster's Mudfish
-    [27437] = { type = "Fish", level = 65 },  -- Icefin Bluefish
-    [27438] = { type = "Fish", level = 65 },  -- Golden Darter
-    [27439] = { type = "Fish", level = 70 },  -- Furious Crawdad
-    
-    -- Cooked Fish
-    [5095]  = { type = "Fish", level = 5 },   -- Rainbow Fin Albacore
-    [4592]  = { type = "Fish", level = 5 },   -- Longjaw Mud Snapper
-    [4593]  = { type = "Fish", level = 10 },  -- Bristle Whisker Catfish
-    [4594]  = { type = "Fish", level = 15 },  -- Rockscale Cod
-    [6888]  = { type = "Fish", level = 20 },  -- Herb Baked Egg
-    [8364]  = { type = "Fish", level = 30 },  -- Mithril Head Trout
-    [13927] = { type = "Fish", level = 35 },  -- Cooked Glossy Mightfish
-    [13928] = { type = "Fish", level = 40 },  -- Grilled Squid
-    [13932] = { type = "Fish", level = 40 },  -- Poached Sunscale Salmon
-    [13934] = { type = "Fish", level = 45 },  -- Filet of Redgill
-    [27661] = { type = "Fish", level = 55 },  -- Blackened Trout
-    [27664] = { type = "Fish", level = 55 },  -- Grilled Mudfish
-    [27665] = { type = "Fish", level = 60 },  -- Poached Bluefish
-    [27666] = { type = "Fish", level = 60 },  -- Golden Fish Sticks
-    [27667] = { type = "Fish", level = 65 },  -- Spicy Crawdad
-    
-    -- ============ BREAD ============
-    [4540]  = { type = "Bread", level = 5 },  -- Tough Hunk of Bread
-    [4541]  = { type = "Bread", level = 15 }, -- Freshly Baked Bread
-    [4542]  = { type = "Bread", level = 25 }, -- Moist Cornbread
-    [4544]  = { type = "Bread", level = 35 }, -- Mulgore Spice Bread
-    [4601]  = { type = "Bread", level = 45 }, -- Soft Banana Bread
-    [8950]  = { type = "Bread", level = 45 }, -- Homemade Cherry Pie
-    [27855] = { type = "Bread", level = 55 }, -- Mag'har Grainbread
-    [29453] = { type = "Bread", level = 55 }, -- Sporeggar Mushroom
-    [33449] = { type = "Bread", level = 65 }, -- Crusty Flatbread
-    [35947] = { type = "Bread", level = 70 }, -- Sparkling Frostcap
-    
-    -- ============ CHEESE ============
-    [414]   = { type = "Cheese", level = 5 },  -- Dalaran Sharp
-    [422]   = { type = "Cheese", level = 15 }, -- Dwarven Mild
-    [1707]  = { type = "Cheese", level = 25 }, -- Stormwind Brie
-    [3927]  = { type = "Cheese", level = 35 }, -- Fine Aged Cheddar
-    [8932]  = { type = "Cheese", level = 45 }, -- Alterac Swiss
-    [27856] = { type = "Cheese", level = 55 }, -- Skethyl Berries
-    [33443] = { type = "Cheese", level = 65 }, -- Soured Goat Cheese
-    [35952] = { type = "Cheese", level = 70 }, -- Briny Hardcheese
-    
-    -- ============ FUNGUS ============
-    [4604]  = { type = "Fungus", level = 5 },  -- Forest Mushroom Cap
-    [4605]  = { type = "Fungus", level = 15 }, -- Red-Speckled Mushroom
-    [4606]  = { type = "Fungus", level = 25 }, -- Spongy Morel
-    [4607]  = { type = "Fungus", level = 35 }, -- Delicious Cave Mold
-    [4608]  = { type = "Fungus", level = 45 }, -- Raw Black Truffle
-    [27859] = { type = "Fungus", level = 55 }, -- Zangar Caps
-    [35948] = { type = "Fungus", level = 65 }, -- Savory Snowplum
-    
-    -- ============ FRUIT ============
-    [4536]  = { type = "Fruit", level = 5 },  -- Shiny Red Apple
-    [4537]  = { type = "Fruit", level = 15 }, -- Tel'Abim Banana
-    [4538]  = { type = "Fruit", level = 25 }, -- Snapvine Watermelon
-    [4539]  = { type = "Fruit", level = 35 }, -- Goldenbark Apple
-    [4602]  = { type = "Fruit", level = 45 }, -- Moon Harvest Pumpkin
-    [27857] = { type = "Fruit", level = 55 }, -- Garadar Sharp
-    [27858] = { type = "Fruit", level = 55 }, -- Sunspring Carp
-    [35949] = { type = "Fruit", level = 65 }, -- Tundra Berries
-    [35950] = { type = "Fruit", level = 70 }, -- Sweet Potato
-    
-    -- ============ CONJURED FOODS (all types) ============
-    [5349]  = { type = "Bread", level = 5 },   -- Conjured Muffin
-    [5350]  = { type = "Bread", level = 15 },  -- Conjured Bread
-    [1113]  = { type = "Bread", level = 25 },  -- Conjured Pumpernickel
-    [1114]  = { type = "Bread", level = 35 },  -- Conjured Sourdough
-    [1487]  = { type = "Bread", level = 45 },  -- Conjured Sweet Roll
-    [22895] = { type = "Bread", level = 55 },  -- Conjured Cinnamon Roll
-    [34062] = { type = "Bread", level = 70 },  -- Conjured Mana Strudel
+-- Food types are ItemPetFood IDs. A pet eats type t when its family's
+-- diet mask has bit 2^(t-1).
+Food.TYPES = { "Meat", "Fish", "Cheese", "Bread", "Fungus", "Fruit", "Raw Meat", "Raw Fish" }
+
+-- Diet names as GetPetFoodTypes returns them, every client language,
+-- lowercased the way Lua's string.lower does (ASCII only).
+Food.dietNames = {
+    ["carne"] = 1,
+    ["fleisch"] = 1,
+    ["meat"] = 1,
+    ["viande"] = 1,
+    ["Мясо"] = 1,
+    ["肉"] = 1,
+    ["고기"] = 1,
+    ["fisch"] = 2,
+    ["fish"] = 2,
+    ["peixe"] = 2,
+    ["pescado"] = 2,
+    ["poisson"] = 2,
+    ["Рыба"] = 2,
+    ["魚"] = 2,
+    ["鱼"] = 2,
+    ["생선"] = 2,
+    ["cheese"] = 3,
+    ["fromage"] = 3,
+    ["käse"] = 3,
+    ["queijo"] = 3,
+    ["queso"] = 3,
+    ["Сыр"] = 3,
+    ["乳酪"] = 3,
+    ["奶酪"] = 3,
+    ["치즈"] = 3,
+    ["bread"] = 4,
+    ["brot"] = 4,
+    ["pain"] = 4,
+    ["pan"] = 4,
+    ["pão"] = 4,
+    ["Хлеб"] = 4,
+    ["面包"] = 4,
+    ["麵包"] = 4,
+    ["빵"] = 4,
+    ["champignon"] = 5,
+    ["fungo"] = 5,
+    ["fungus"] = 5,
+    ["hongo"] = 5,
+    ["Грибы"] = 5,
+    ["蘑菇"] = 5,
+    ["버섯"] = 5,
+    ["fruit"] = 6,
+    ["fruta"] = 6,
+    ["obst"] = 6,
+    ["Фрукты"] = 6,
+    ["水果"] = 6,
+    ["과일"] = 6,
+    ["carne crua"] = 7,
+    ["carne cruda"] = 7,
+    ["raw meat"] = 7,
+    ["rohes fleisch"] = 7,
+    ["viande crue"] = 7,
+    ["Сырое мясо"] = 7,
+    ["生肉"] = 7,
+    ["날고기"] = 7,
+    ["peixe cru"] = 8,
+    ["pescado crudo"] = 8,
+    ["poisson cru"] = 8,
+    ["raw fish"] = 8,
+    ["roher fisch"] = 8,
+    ["Сырая рыба"] = 8,
+    ["生魚"] = 8,
+    ["生鱼"] = 8,
+    ["날생선"] = 8,
+}
+
+-- Pet family (English name) -> diet mask, for when the client gives no diet.
+Food.familyMasks = {
+    ["Bat"] = 48,                   -- Fungus, Fruit
+    ["Bear"] = 63,                  -- Meat, Fish, Cheese, Bread, Fungus, Fruit
+    ["Boar"] = 63,                  -- Meat, Fish, Cheese, Bread, Fungus, Fruit
+    ["Carrion Bird"] = 3,           -- Meat, Fish
+    ["Cat"] = 3,                    -- Meat, Fish
+    ["Crab"] = 58,                  -- Fish, Bread, Fungus, Fruit
+    ["Crocolisk"] = 3,              -- Meat, Fish
+    ["Dragonhawk"] = 227,           -- Meat, Fish, Fruit, Raw Meat, Raw Fish
+    ["Gorilla"] = 48,               -- Fungus, Fruit
+    ["Hyena"] = 33,                 -- Meat, Fruit
+    ["Nether Ray"] = 65,            -- Meat, Raw Meat
+    ["Owl"] = 1,                    -- Meat
+    ["Raptor"] = 1,                 -- Meat
+    ["Ravager"] = 65,               -- Meat, Raw Meat
+    ["Scorpid"] = 1,                -- Meat
+    ["Sea Lion"] = 4,               -- Cheese
+    ["Serpent"] = 195,              -- Meat, Fish, Raw Meat, Raw Fish
+    ["Spider"] = 1,                 -- Meat
+    ["Sporebat"] = 60,              -- Cheese, Bread, Fungus, Fruit
+    ["Tallstrider"] = 52,           -- Cheese, Fungus, Fruit
+    ["Turtle"] = 178,               -- Fish, Fungus, Fruit, Raw Fish
+    ["Warp Stalker"] = 162,         -- Fish, Fruit, Raw Fish
+    ["Wind Serpent"] = 14,          -- Fish, Cheese, Bread
+    ["Wolf"] = 1,                   -- Meat
+}
+
+-- itemID -> { food type, item level }
+Food.items = {
+    -- Meat
+    [11409] = { 1, 1 },       -- Bear Organ
+    [12623] = { 1, 1 },       -- Chillwind Meat
+    [5051] = { 1, 1 },        -- Dig Rat
+    [11414] = { 1, 1 },       -- Grizzled Mane
+    [23676] = { 1, 1 },       -- Moongraze Stag Tenderloin
+    [12733] = { 1, 1 },       -- Sacred Frostsaber Meat
+    [11410] = { 1, 1 },       -- Savage Bear Claw
+    [11472] = { 1, 1 },       -- Silvermane Stalker Flank
+    [27669] = { 1, 5 },       -- Bat Flesh
+    [2679] = { 1, 5 },        -- Charred Wolf Meat
+    [769] = { 1, 5 },         -- Chunk of Boar Meat
+    [2886] = { 1, 5 },        -- Crag Boar Rib
+    [19223] = { 1, 5 },       -- Darkmoon Dog
+    [7097] = { 1, 5 },        -- Leg Meat
+    [27668] = { 1, 5 },       -- Lynx Meat
+    [5465] = { 1, 5 },        -- Small Spider Leg
+    [23495] = { 1, 5 },       -- Springpaw Appetizer
+    [2672] = { 1, 5 },        -- Stringy Wolf Meat
+    [117] = { 1, 5 },         -- Tough Jerky
+    [12224] = { 1, 7 },       -- Crispy Bat Wing
+    [6888] = { 1, 7 },        -- Herb Baked Egg
+    [5472] = { 1, 7 },        -- Kaldorei Spider Kabob
+    [2681] = { 1, 7 },        -- Roasted Boar Meat
+    [2680] = { 1, 7 },        -- Spiced Wolf Meat
+    [2888] = { 1, 8 },        -- Beer Basted Boar Ribs
+    [23756] = { 1, 8 },       -- Cookie's Jumbo Gumbo
+    [27635] = { 1, 8 },       -- Lynx Steak
+    [24105] = { 1, 8 },       -- Roasted Moongraze Tenderloin
+    [5473] = { 1, 8 },        -- Scorpid Surprise
+    [17199] = { 1, 10 },      -- Bad Egg Nog
+    [2673] = { 1, 10 },       -- Coyote Meat
+    [5467] = { 1, 10 },       -- Kodo Meat
+    [5474] = { 1, 10 },       -- Roasted Kodo Meat
+    [5469] = { 1, 10 },       -- Strider Meat
+    [729] = { 1, 10 },        -- Stringy Vulture Meat
+    [3173] = { 1, 11 },       -- Bear Meat
+    [723] = { 1, 12 },        -- Goretusk Liver
+    [2677] = { 1, 14 },       -- Boar Ribs
+    [2924] = { 1, 14 },       -- Crocolisk Meat
+    [27636] = { 1, 15 },      -- Bat Bites
+    [3220] = { 1, 15 },       -- Blood Sausage
+    [2684] = { 1, 15 },       -- Coyote Steak
+    [1081] = { 1, 15 },       -- Crisp Spider Meat
+    [3662] = { 1, 15 },       -- Crocolisk Steak
+    [22644] = { 1, 15 },      -- Crunchy Spider Leg
+    [22645] = { 1, 15 },      -- Crunchy Spider Surprise
+    [17119] = { 1, 15 },      -- Deeprun Rat Kabob
+    [2687] = { 1, 15 },       -- Dry Pork Ribs
+    [724] = { 1, 15 },        -- Goretusk Liver Pie
+    [2287] = { 1, 15 },       -- Haunch of Meat
+    [6890] = { 1, 15 },       -- Smoked Bear Meat
+    [19304] = { 1, 15 },      -- Spiced Beef Jerky
+    [5477] = { 1, 15 },       -- Strider Stew
+    [18633] = { 1, 15 },      -- Styleen's Sour Suckerpop
+    [1080] = { 1, 15 },       -- Tough Condor Meat
+    [733] = { 1, 15 },        -- Westfall Stew
+    [1015] = { 1, 19 },       -- Lean Wolf Flank
+    [5478] = { 1, 20 },       -- Dig Rat Stew
+    [1082] = { 1, 20 },       -- Redridge Goulash
+    [2685] = { 1, 20 },       -- Succulent Pork Ribs
+    [3730] = { 1, 21 },       -- Big Bear Meat
+    [5479] = { 1, 22 },       -- Crispy Lizard Tail
+    [5470] = { 1, 22 },       -- Thunder Lizard Tail
+    [3731] = { 1, 23 },       -- Lion Meat
+    [5471] = { 1, 23 },       -- Stag Meat
+    [3667] = { 1, 23 },       -- Tender Crocolisk Meat
+    [3726] = { 1, 25 },       -- Big Bear Steak
+    [3664] = { 1, 25 },       -- Crocolisk Gumbo
+    [3665] = { 1, 25 },       -- Curiously Tasty Omelet
+    [3666] = { 1, 25 },       -- Gooey Spider Cake
+    [3727] = { 1, 25 },       -- Hot Lion Chops
+    [5480] = { 1, 25 },       -- Lean Venison
+    [12209] = { 1, 25 },      -- Lean Wolf Steak
+    [3770] = { 1, 25 },       -- Mutton Chop
+    [19305] = { 1, 25 },      -- Pickled Kodo Foot
+    [1017] = { 1, 25 },       -- Seasoned Wolf Kabob
+    [11411] = { 1, 28 },      -- Large Bear Bone
+    [20074] = { 1, 30 },      -- Heavy Crocolisk Stew
+    [12037] = { 1, 30 },      -- Mystery Meat
+    [12184] = { 1, 30 },      -- Raptor Flesh
+    [12203] = { 1, 30 },      -- Red Wolf Meat
+    [3728] = { 1, 30 },       -- Tasty Lion Steak
+    [12202] = { 1, 30 },      -- Tiger Meat
+    [3712] = { 1, 30 },       -- Turtle Meat
+    [4457] = { 1, 35 },       -- Barbecued Buzzard Wing
+    [3404] = { 1, 35 },       -- Buzzard Wing
+    [12213] = { 1, 35 },      -- Carrion Surprise
+    [17407] = { 1, 35 },      -- Graccu's Homemade Meat Pie
+    [12204] = { 1, 35 },      -- Heavy Kodo Meat
+    [13851] = { 1, 35 },      -- Hot Wolf Ribs
+    [12212] = { 1, 35 },      -- Jungle Stew
+    [12214] = { 1, 35 },      -- Mystery Stew
+    [19224] = { 1, 35 },      -- Red Hot Wings
+    [12210] = { 1, 35 },      -- Roast Raptor
+    [3729] = { 1, 35 },       -- Soothing Turtle Bisque
+    [12211] = { 1, 35 },      -- Spiced Wolf Ribs
+    [3771] = { 1, 35 },       -- Wild Hog Shank
+    [12217] = { 1, 40 },      -- Dragonbreath Chili
+    [12215] = { 1, 40 },      -- Heavy Kodo Stew
+    [17222] = { 1, 40 },      -- Spider Sausage
+    [12206] = { 1, 40 },      -- Tender Crab Meat
+    [12208] = { 1, 40 },      -- Tender Wolf Meat
+    [12205] = { 1, 40 },      -- White Spider Meat
+    [18635] = { 1, 45 },      -- Bellara's Nutterbar
+    [16971] = { 1, 45 },      -- Clamlette Surprise
+    [19306] = { 1, 45 },      -- Crunchy Frog
+    [4599] = { 1, 45 },       -- Cured Ham Steak
+    [12218] = { 1, 45 },      -- Monster Omelet
+    [12216] = { 1, 45 },      -- Spiced Chili Crab
+    [17408] = { 1, 45 },      -- Spicy Beefstick
+    [18045] = { 1, 45 },      -- Tender Wolf Steak
+    [35562] = { 1, 50 },      -- Bear Flank
+    [29293] = { 1, 55 },      -- Bonestripper Buzzard Hotwings
+    [35563] = { 1, 55 },      -- Charred Bear Kabobs
+    [11444] = { 1, 55 },      -- Grim Guzzler Boar
+    [19995] = { 1, 55 },      -- Harvest Boar
+    [29292] = { 1, 55 },      -- Helboar Bacon
+    [35565] = { 1, 55 },      -- Juicy Bear Burger
+    [8952] = { 1, 55 },       -- Roasted Quail
+    [20424] = { 1, 55 },      -- Sandworm Meat
+    [20452] = { 1, 55 },      -- Smoked Desert Dumplings
+    [21235] = { 1, 55 },      -- Winter Veil Roast
+    [27671] = { 1, 60 },      -- Buzzard Meat
+    [27677] = { 1, 60 },      -- Chunk o' Basilisk
+    [27678] = { 1, 60 },      -- Clefthoof Meat
+    [29402] = { 1, 60 },      -- Jessen's Special Slop OLD
+    [31670] = { 1, 60 },      -- Raptor Ribs
+    [27674] = { 1, 60 },      -- Ravager Flesh
+    [31671] = { 1, 60 },      -- Serpent Flesh
+    [27682] = { 1, 60 },      -- Talbuk Venison
+    [27681] = { 1, 60 },      -- Warped Flesh
+    [27657] = { 1, 65 },      -- Blackened Basilisk
+    [27651] = { 1, 65 },      -- Buzzard Bites
+    [31673] = { 1, 65 },      -- Crunchy Serpent
+    [21023] = { 1, 65 },      -- Dirge's Kickin' Chimaerok Chops
+    [29412] = { 1, 65 },      -- Jessen's Special Slop
+    [31672] = { 1, 65 },      -- Mok'Nathal Shortribs
+    [38427] = { 1, 65 },      -- Pickled Egg
+    [27655] = { 1, 65 },      -- Ravager Dog
+    [27658] = { 1, 65 },      -- Roasted Clefthoof
+    [30610] = { 1, 65 },      -- Smoked Black Bear Meat
+    [27854] = { 1, 65 },      -- Smoked Talbuk Venison
+    [33866] = { 1, 65 },      -- Stormchops
+    [27660] = { 1, 65 },      -- Talbuk Steak
+    [27659] = { 1, 65 },      -- Warp Burger
+    [29451] = { 1, 75 },      -- Clefthoof Ribs
+    [33254] = { 1, 75 },      -- Forest Strider Drumstick
+    [30355] = { 1, 75 },      -- Grilled Shadowmoon Tuber
+    [32686] = { 1, 75 },      -- Mingo's Fortune Giblets
+    [32685] = { 1, 75 },      -- Ogri'la Chicken Fingers
+    [30358] = { 1, 75 },      -- Oronok's Tuber of Agility
+    [30357] = { 1, 75 },      -- Oronok's Tuber of Healing
+    [30361] = { 1, 75 },      -- Oronok's Tuber of Spell Power
+    [30359] = { 1, 75 },      -- Oronok's Tuber of Strength
+    [33872] = { 1, 75 },      -- Spicy Hot Talbuk
+    [35710] = { 1, 80 },      -- Delicious Baked Ham
+    -- Fish
+    [6290] = { 2, 5 },        -- Brilliant Smallfish
+    [6291] = { 2, 5 },        -- Raw Brilliant Smallfish
+    [6303] = { 2, 5 },        -- Raw Slitherskin Mackerel
+    [6299] = { 2, 5 },        -- Sickly Looking Fish
+    [787] = { 2, 5 },         -- Slitherskin Mackerel
+    [2608] = { 2, 10 },       -- Threshadon Ambergris
+    [2675] = { 2, 13 },       -- Crawler Claw
+    [2674] = { 2, 13 },       -- Crawler Meat
+    [5503] = { 2, 14 },       -- Clam Meat
+    [6292] = { 2, 15 },       -- 10 Pound Mud Snapper
+    [6294] = { 2, 15 },       -- 12 Pound Mud Snapper
+    [6295] = { 2, 15 },       -- 15 Pound Mud Snapper
+    [6309] = { 2, 15 },       -- 17 Pound Catfish
+    [6310] = { 2, 15 },       -- 19 Pound Catfish
+    [6311] = { 2, 15 },       -- 22 Pound Catfish
+    [5525] = { 2, 15 },       -- Boiled Clams
+    [2682] = { 2, 15 },       -- Cooked Crab Claw
+    [2683] = { 2, 15 },       -- Crab Cake
+    [12238] = { 2, 15 },      -- Darkshore Grouper
+    [6522] = { 2, 15 },       -- Deviate Fish
+    [5476] = { 2, 15 },       -- Fillet of Frenzy
+    [6316] = { 2, 15 },       -- Loch Frenzy Delight
+    [4592] = { 2, 15 },       -- Longjaw Mud Snapper
+    [6458] = { 2, 15 },       -- Oil Covered Fish
+    [6358] = { 2, 15 },       -- Oily Blackmouth
+    [5095] = { 2, 15 },       -- Rainbow Fin Albacore
+    [6317] = { 2, 15 },       -- Raw Loch Frenzy
+    [6289] = { 2, 15 },       -- Raw Longjaw Mud Snapper
+    [6361] = { 2, 15 },       -- Raw Rainbow Fin Albacore
+    [1326] = { 2, 15 },       -- Sauteed Sunfish
+    [5468] = { 2, 15 },       -- Soft Frenzy Flesh
+    [6657] = { 2, 18 },       -- Savory Deviate Delight
+    [5526] = { 2, 20 },       -- Clam Chowder
+    [21071] = { 2, 20 },      -- Raw Sagefish
+    [21072] = { 2, 20 },      -- Smoked Sagefish
+    [5504] = { 2, 23 },       -- Tangy Clam Meat
+    [6363] = { 2, 25 },       -- 26 Pound Catfish
+    [6364] = { 2, 25 },       -- 32 Pound Catfish
+    [4593] = { 2, 25 },       -- Bristle Whisker Catfish
+    [13843] = { 2, 25 },      -- Fall/Winter Afternoon
+    [13844] = { 2, 25 },      -- Fall/Winter Evening
+    [13842] = { 2, 25 },      -- Fall/Winter Morning
+    [13845] = { 2, 25 },      -- Fall/Winter Night
+    [6359] = { 2, 25 },       -- Firefin Snapper
+    [5527] = { 2, 25 },       -- Goblin Deviled Clams
+    [3663] = { 2, 25 },       -- Murloc Fin Soup
+    [6308] = { 2, 25 },       -- Raw Bristle Whisker Catfish
+    [13847] = { 2, 25 },      -- Spring/Summer Afternoon
+    [13848] = { 2, 25 },      -- Spring/Summer Evening
+    [13846] = { 2, 25 },      -- Spring/Summer Morning
+    [13849] = { 2, 25 },      -- Spring/Summer Night
+    [13546] = { 2, 35 },      -- Bloodbelly Fish
+    [4655] = { 2, 35 },       -- Giant Clam Meat
+    [6038] = { 2, 35 },       -- Giant Clam Scorcho
+    [8364] = { 2, 35 },       -- Mithril Head Trout
+    [37588] = { 2, 35 },      -- Mostly Digested Fish
+    [8365] = { 2, 35 },       -- Raw Mithril Head Trout
+    [6362] = { 2, 35 },       -- Raw Rockscale Cod
+    [4594] = { 2, 35 },       -- Rockscale Cod
+    [21153] = { 2, 40 },      -- Raw Greater Sagefish
+    [21217] = { 2, 40 },      -- Sagefish Delight
+    [13885] = { 2, 45 },      -- 34 Pound Redgill
+    [13886] = { 2, 45 },      -- 37 Pound Redgill
+    [13876] = { 2, 45 },      -- 40 Pound Grouper
+    [13882] = { 2, 45 },      -- 42 Pound Redgill
+    [13883] = { 2, 45 },      -- 45 Pound Redgill
+    [13877] = { 2, 45 },      -- 47 Pound Grouper
+    [13884] = { 2, 45 },      -- 49 Pound Redgill
+    [13887] = { 2, 45 },      -- 52 Pound Redgill
+    [13878] = { 2, 45 },      -- 53 Pound Grouper
+    [13879] = { 2, 45 },      -- 59 Pound Grouper
+    [13880] = { 2, 45 },      -- 68 Pound Grouper
+    [19803] = { 2, 45 },      -- Brownell's Blue Striped Racer
+    [33004] = { 2, 45 },      -- Clamlette Surprise
+    [13927] = { 2, 45 },      -- Cooked Glossy Mightfish
+    [19806] = { 2, 45 },      -- Dezian Queenfish
+    [13930] = { 2, 45 },      -- Filet of Redgill
+    [9681] = { 2, 45 },       -- Grilled King Crawler Legs
+    [13928] = { 2, 45 },      -- Grilled Squid
+    [13929] = { 2, 45 },      -- Hot Smoked Bass
+    [19805] = { 2, 45 },      -- Keefer's Angelfish
+    [13757] = { 2, 45 },      -- Lightning Eel
+    [13931] = { 2, 45 },      -- Nightfin Soup
+    [19804] = { 2, 45 },      -- Pale Ghoulfish
+    [13932] = { 2, 45 },      -- Poached Sunscale Salmon
+    [13754] = { 2, 45 },      -- Raw Glossy Mightfish
+    [13759] = { 2, 45 },      -- Raw Nightfin Snapper
+    [13758] = { 2, 45 },      -- Raw Redgill
+    [4603] = { 2, 45 },       -- Raw Spotted Yellowtail
+    [13756] = { 2, 45 },      -- Raw Summer Bass
+    [13760] = { 2, 45 },      -- Raw Sunscale Salmon
+    [19807] = { 2, 45 },      -- Speckled Tastyfish
+    [6887] = { 2, 45 },       -- Spotted Yellowtail
+    [13422] = { 2, 45 },      -- Stonescale Eel
+    [21552] = { 2, 45 },      -- Striped Yellowtail
+    [16766] = { 2, 45 },      -- Undermine Clam Chowder
+    [13755] = { 2, 45 },      -- Winter Squid
+    [7974] = { 2, 45 },       -- Zesty Clam Meat
+    [13917] = { 2, 55 },      -- 103 Pound Mightfish
+    [13909] = { 2, 55 },      -- 12 Pound Lobster
+    [13910] = { 2, 55 },      -- 15 Pound Lobster
+    [13901] = { 2, 55 },      -- 15 Pound Salmon
+    [13902] = { 2, 55 },      -- 18 Pound Salmon
+    [13911] = { 2, 55 },      -- 19 Pound Lobster
+    [13912] = { 2, 55 },      -- 21 Pound Lobster
+    [13913] = { 2, 55 },      -- 22 Pound Lobster
+    [13903] = { 2, 55 },      -- 22 Pound Salmon
+    [13904] = { 2, 55 },      -- 25 Pound Salmon
+    [13905] = { 2, 55 },      -- 29 Pound Salmon
+    [13906] = { 2, 55 },      -- 32 Pound Salmon
+    [13907] = { 2, 55 },      -- 7 Pound Lobster
+    [13914] = { 2, 55 },      -- 70 Pound Mightfish
+    [13915] = { 2, 55 },      -- 85 Pound Mightfish
+    [13908] = { 2, 55 },      -- 9 Pound Lobster
+    [13916] = { 2, 55 },      -- 92 Pound Mightfish
+    [13935] = { 2, 55 },      -- Baked Salmon
+    [13888] = { 2, 55 },      -- Darkclaw Lobster
+    [19996] = { 2, 55 },      -- Harvest Fish
+    [13893] = { 2, 55 },      -- Large Raw Mightfish
+    [13933] = { 2, 55 },      -- Lobster Stew
+    [13934] = { 2, 55 },      -- Mightfish Steak
+    [13890] = { 2, 55 },      -- Plated Armorfish
+    [8959] = { 2, 55 },       -- Raw Spinefin Halibut
+    [13889] = { 2, 55 },      -- Raw Whitescale Salmon
+    [18255] = { 2, 55 },      -- Runn Tum Tuber
+    [18254] = { 2, 55 },      -- Runn Tum Tuber Surprise
+    [8957] = { 2, 55 },       -- Spinefin Halibut
+    [21238] = { 2, 55 },      -- Winter Veil Cookie UNUSED
+    [27422] = { 2, 60 },      -- Barbed Gill Trout
+    [27516] = { 2, 60 },      -- Enormous Barbed Gill Trout
+    [27441] = { 2, 60 },      -- Felblood Snapper
+    [27435] = { 2, 60 },      -- Figluster's Mudfish
+    [27444] = { 2, 60 },      -- Foulfin
+    [27439] = { 2, 60 },      -- Furious Crawdad
+    [27438] = { 2, 60 },      -- Golden Darter
+    [27515] = { 2, 60 },      -- Huge Spotted Feltail
+    [27437] = { 2, 60 },      -- Icefin Bluefish
+    [27425] = { 2, 60 },      -- Spotted Feltail
+    [27429] = { 2, 60 },      -- Zangarian Sporefish
+    [27663] = { 2, 65 },      -- Blackened Sporefish
+    [27661] = { 2, 65 },      -- Blackened Trout
+    [33823] = { 2, 65 },      -- Bloodfin Catfish
+    [33867] = { 2, 65 },      -- Broiled Bloodfin
+    [30155] = { 2, 65 },      -- Clam Bar
+    [33824] = { 2, 65 },      -- Crescent-Tail Skullfish
+    [27662] = { 2, 65 },      -- Feltail Delight
+    [27666] = { 2, 65 },      -- Golden Fish Sticks
+    [27664] = { 2, 65 },      -- Grilled Mudfish
+    [24477] = { 2, 65 },      -- Jaggal Clam Meat
+    [27665] = { 2, 65 },      -- Poached Bluefish
+    [27667] = { 2, 65 },      -- Spicy Crawdad
+    [27858] = { 2, 65 },      -- Sunspring Carp
+    [34864] = { 2, 70 },      -- Baby Crocolisk
+    [34865] = { 2, 70 },      -- Blackfin Darter
+    [34866] = { 2, 70 },      -- Giant Freshwater Shrimp
+    [35285] = { 2, 70 },      -- Giant Sunfish
+    [27442] = { 2, 70 },      -- Goldenscale Vendorfish
+    [35287] = { 2, 70 },      -- Luminous Bluetail
+    [34867] = { 2, 70 },      -- Monstrous Felblood Snapper
+    [33825] = { 2, 70 },      -- Skullfish Soup
+    [34868] = { 2, 70 },      -- World's Largest Mudfish
+    [33052] = { 2, 75 },      -- Fisherman's Feast
+    [33053] = { 2, 75 },      -- Hot Buttered Trout
+    [33048] = { 2, 75 },      -- Stewed Trout
+    [29452] = { 2, 75 },      -- Zangar Trout
+    -- Cheese
+    [2070] = { 3, 5 },        -- Darnassian Bleu
+    [414] = { 3, 15 },        -- Dalaran Sharp
+    [17406] = { 3, 15 },      -- Holiday Cheesewheel
+    [16167] = { 3, 15 },      -- Versicolor Treat
+    [422] = { 3, 25 },        -- Dwarven Mild
+    [1707] = { 3, 35 },       -- Stormwind Brie
+    [3927] = { 3, 45 },       -- Fine Aged Cheddar
+    [8932] = { 3, 55 },       -- Alterac Swiss
+    [24338] = { 3, 55 },      -- Hellfire Spineleaf
+    [27857] = { 3, 65 },      -- Garadar Sharp
+    [30458] = { 3, 65 },      -- Stromgarde Muenster
+    [29448] = { 3, 75 },      -- Mag'har Mild Cheese
+    -- Bread
+    [16166] = { 4, 5 },       -- Bean Soup
+    [17344] = { 4, 5 },       -- Candy Cane
+    [5349] = { 4, 5 },        -- Conjured Muffin
+    [20857] = { 4, 5 },       -- Honey Bread
+    [11109] = { 4, 5 },       -- Special Chicken Feed
+    [30816] = { 4, 5 },       -- Spice Bread
+    [33043] = { 4, 5 },       -- The Essential Brewfest Pretzel
+    [4540] = { 4, 5 },        -- Tough Hunk of Bread
+    [1113] = { 4, 15 },       -- Conjured Bread
+    [4541] = { 4, 15 },       -- Freshly Baked Bread
+    [1114] = { 4, 25 },       -- Conjured Rye
+    [4542] = { 4, 25 },       -- Moist Cornbread
+    [20063] = { 4, 35 },      -- Arathi Basin Field Ration
+    [1487] = { 4, 35 },       -- Conjured Pumpernickel
+    [20223] = { 4, 35 },      -- Defiler's Field Ration
+    [20226] = { 4, 35 },      -- Highlander's Field Ration
+    [18632] = { 4, 35 },      -- Moonbrook Riot Taffy
+    [4544] = { 4, 35 },       -- Mulgore Spice Bread
+    [19062] = { 4, 35 },      -- Warsong Gulch Field Ration
+    [16169] = { 4, 35 },      -- Wild Ricecake
+    [20064] = { 4, 45 },      -- Arathi Basin Iron Ration
+    [8075] = { 4, 45 },       -- Conjured Sourdough
+    [20224] = { 4, 45 },      -- Defiler's Iron Ration
+    [20227] = { 4, 45 },      -- Highlander's Iron Ration
+    [4601] = { 4, 45 },       -- Soft Banana Bread
+    [19061] = { 4, 45 },      -- Warsong Gulch Iron Ration
+    [20062] = { 4, 55 },      -- Arathi Basin Enriched Ration
+    [20390] = { 4, 55 },      -- Candy Bar
+    [20389] = { 4, 55 },      -- Candy Corn
+    [8076] = { 4, 55 },       -- Conjured Sweet Roll
+    [20222] = { 4, 55 },      -- Defiler's Enriched Ration
+    [13724] = { 4, 55 },      -- Enriched Manna Biscuit
+    [21537] = { 4, 55 },      -- Festival Dumplings
+    [23160] = { 4, 55 },      -- Friendship Bread
+    [19696] = { 4, 55 },      -- Harvest Bread
+    [20225] = { 4, 55 },      -- Highlander's Enriched Ration
+    [8950] = { 4, 55 },       -- Homemade Cherry Pie
+    [20388] = { 4, 55 },      -- Lollipop
+    [23175] = { 4, 55 },      -- Tasty Summer Treat
+    [19060] = { 4, 55 },      -- Warsong Gulch Enriched Ration
+    [21254] = { 4, 55 },      -- Winter Veil Cookie
+    [21236] = { 4, 55 },      -- Winter Veil Loaf
+    [19301] = { 4, 60 },      -- Alterac Manna Biscuit
+    [22895] = { 4, 65 },      -- Conjured Cinnamon Roll
+    [32722] = { 4, 65 },      -- Enriched Terocone Juice
+    [20031] = { 4, 65 },      -- Essence Mango
+    [33246] = { 4, 65 },      -- Funnel Cake
+    [21215] = { 4, 65 },      -- Graccu's Mince Meat Fruitcake
+    [27855] = { 4, 65 },      -- Mag'har Grainbread
+    [28486] = { 4, 65 },      -- Moser's Magnificent Muffin
+    [29449] = { 4, 75 },      -- Bladespire Bagel
+    [22019] = { 4, 75 },      -- Conjured Croissant
+    [34062] = { 4, 75 },      -- Conjured Manna Biscuit
+    [29394] = { 4, 75 },      -- Lyribread
+    [34780] = { 4, 75 },      -- Naaru Ration
+    [38428] = { 4, 75 },      -- Rock-Salted Pretzel
+    -- Fungus
+    [4604] = { 5, 5 },        -- Forest Mushroom Cap
+    [4605] = { 5, 15 },       -- Red-speckled Mushroom
+    [5569] = { 5, 20 },       -- Seaweed
+    [4606] = { 5, 25 },       -- Spongy Morel
+    [4607] = { 5, 35 },       -- Delicious Cave Mold
+    [4608] = { 5, 45 },       -- Raw Black Truffle
+    [17747] = { 5, 50 },      -- Razorlash Root
+    [8948] = { 5, 55 },       -- Dried King Bolete
+    [35314] = { 5, 60 },      -- Partially Digested Weeds
+    [27676] = { 5, 60 },      -- Strange Spores
+    [24008] = { 5, 65 },      -- Dried Mushroom Rations
+    [24539] = { 5, 65 },      -- Marsh Lichen
+    [32721] = { 5, 65 },      -- Skyguard Rations
+    [27859] = { 5, 65 },      -- Zangar Caps
+    [29453] = { 5, 75 },      -- Sporeggar Mushroom
+    -- Fruit
+    [11584] = { 6, 5 },       -- Cactus Apple Surprise
+    [23329] = { 6, 5 },       -- Enriched Lasher Root
+    [5057] = { 6, 5 },        -- Ripe Watermelon
+    [4536] = { 6, 5 },        -- Shiny Red Apple
+    [4656] = { 6, 5 },        -- Small Pumpkin
+    [24072] = { 6, 15 },      -- Sand Pear Pie
+    [4537] = { 6, 15 },       -- Tel'Abim Banana
+    [4538] = { 6, 25 },       -- Snapvine Watermelon
+    [16170] = { 6, 25 },      -- Steamed Mandu
+    [4539] = { 6, 35 },       -- Goldenbark Apple
+    [21030] = { 6, 45 },      -- Darnassus Kimchi Pie
+    [16168] = { 6, 45 },      -- Heaven Peach
+    [4602] = { 6, 45 },       -- Moon Harvest Pumpkin
+    [20516] = { 6, 55 },      -- Bobbing Apple
+    [21031] = { 6, 55 },      -- Cabbage Kimchi
+    [8953] = { 6, 55 },       -- Deep Fried Plantains
+    [19994] = { 6, 55 },      -- Harvest Fruit
+    [11415] = { 6, 55 },      -- Mixed Berries
+    [11952] = { 6, 55 },      -- Night Dragon's Breath
+    [21033] = { 6, 55 },      -- Radish Kimchi
+    [23172] = { 6, 55 },      -- Refreshing Red Apple
+    [16171] = { 6, 55 },      -- Shinsollo
+    [12763] = { 6, 55 },      -- Un'Goro Etherfruit
+    [11951] = { 6, 55 },      -- Whipper Root Tuber
+    [11950] = { 6, 55 },      -- Windblossom Berries
+    [22324] = { 6, 55 },      -- Winter Kimchi
+    [21240] = { 6, 55 },      -- Winter Veil Candy
+    [29393] = { 6, 65 },      -- Diamond Berries
+    [24009] = { 6, 65 },      -- Dried Fruit Rations
+    [22795] = { 6, 65 },      -- Fel Blossom
+    [27856] = { 6, 65 },      -- Skethyl Berries
+    [29450] = { 6, 75 },      -- Telaari Grapes
+    [28112] = { 6, 100 },     -- Underspore Pod
+    -- Raw Meat
+    [3300] = { 7, 5 },        -- Rabbit's Foot
+    [4879] = { 7, 5 },        -- Squashed Rabbit Carcass
+    [2085] = { 7, 15 },       -- Chunk of Flesh
+    [8427] = { 7, 15 },       -- Mutilated Rat Carcass
+    [3181] = { 7, 15 },       -- Partially Digested Meat
+    [887] = { 7, 25 },        -- Pound of Flesh
 }

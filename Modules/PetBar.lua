@@ -18,17 +18,7 @@ local HAPPINESS = {
 }
 Pet.HAPPINESS = HAPPINESS
 
--- Pet family diets, used only on clients without C_PetInfo.CanPetEatItem.
-local FAMILY_DIETS = {
-    ["Bat"] = { "Fruit", "Fungus" }, ["Bear"] = { "Bread", "Cheese", "Fish", "Fruit", "Fungus", "Meat" },
-    ["Boar"] = { "Bread", "Cheese", "Fish", "Fruit", "Fungus", "Meat" }, ["Carrion Bird"] = { "Fish", "Meat" },
-    ["Cat"] = { "Fish", "Meat" }, ["Crab"] = { "Bread", "Fish", "Fruit", "Fungus" }, ["Crocolisk"] = { "Fish", "Meat" },
-    ["Gorilla"] = { "Fruit", "Fungus" }, ["Hyena"] = { "Fruit", "Meat" }, ["Owl"] = { "Meat" }, ["Raptor"] = { "Meat" },
-    ["Scorpid"] = { "Meat" }, ["Spider"] = { "Meat" }, ["Tallstrider"] = { "Cheese", "Fruit", "Fungus" },
-    ["Turtle"] = { "Fish", "Fruit", "Fungus" }, ["Wind Serpent"] = { "Bread", "Cheese", "Fish" }, ["Wolf"] = { "Meat" },
-    ["Ravager"] = { "Meat" }, ["Warp Stalker"] = { "Fish", "Fruit" }, ["Sporebat"] = { "Bread", "Cheese", "Fruit", "Fungus" },
-    ["Nether Ray"] = { "Meat" }, ["Serpent"] = { "Fish", "Meat" }, ["Dragonhawk"] = { "Fish", "Fruit", "Meat" },
-}
+local Food = HS.Food
 
 ---------------------------------------------------------------------------
 -- Food selection
@@ -46,25 +36,41 @@ end
 Pet.FoodBand = FoodBand
 local BAND_LABEL = { [3] = "Full happiness", [2] = "Reduced happiness", [1] = "Low happiness", [0] = "Too low level" }
 
-function Pet:GetDiet()
-    local diet = C.GetPetFoodTypes()
-    if #diet == 0 then
-        local family = C.Readable(UnitCreatureFamily("pet"))
-        diet = family and FAMILY_DIETS[family] or {}
-    end
-    return diet
+-- A pet eats food type t (Data/Food.lua) when bit t of its diet mask is set.
+local function Eats(mask, foodType)
+    return math.floor(mask / 2 ^ (foodType - 1)) % 2 == 1
 end
 
-local function DietSet(diet)
-    local set = {}
-    for _, d in ipairs(diet) do set[d:lower()] = true end
-    return set
+-- Diet names for display, and the mask the food table is matched against.
+-- The client gives the names in its own language; Data/Food.lua knows them all.
+function Pet:GetDiet()
+    local names, mask = C.GetPetFoodTypes(), 0
+    for _, name in ipairs(names) do
+        local t = Food.dietNames[name:lower()]
+        if t and not Eats(mask, t) then mask = mask + 2 ^ (t - 1) end
+    end
+    if mask == 0 then
+        local family = C.Readable(UnitCreatureFamily("pet"))
+        mask = family and Food.familyMasks[family] or 0
+        if #names == 0 then
+            for t, name in ipairs(Food.TYPES) do
+                if Eats(mask, t) then names[#names + 1] = name end
+            end
+        end
+    end
+    return names, mask
 end
 
 -- Scan bags; returns the chosen food and the list of all candidates.
 function Pet:FindFood()
     local petLevel = C.Readable(UnitLevel("pet"))
-    local diet = DietSet(self:GetDiet())
+    local _, diet = self:GetDiet()
+    -- Foods the game refused are remembered per pet.
+    local who = C.Readable(UnitGUID("pet")) or C.Readable(UnitName("pet"))
+    if who ~= self.refusedPet then
+        self.refused, self.refusedPet = {}, who
+    end
+    local refused = self.refused
     local seen, list = {}, {}
     C.ForEachBagItem(function(bag, slot, itemID)
         -- Feed from the smallest stack of each food so partial stacks go first.
@@ -78,13 +84,13 @@ function Pet:FindFood()
         end
         seen[itemID] = true
         local edible = C.CanPetEat(itemID)
-        local entry = HS.FoodDB and HS.FoodDB[itemID]
+        local entry = Food.items[itemID]
         if edible == nil then
-            edible = entry ~= nil and diet[entry.type:lower()] == true
+            edible = entry ~= nil and Eats(diet, entry[1])
         end
-        if not edible then return end
+        if not edible or refused[itemID] then return end
         local name, _, _, itemLevel = C.GetItemInfo(itemID)
-        itemLevel = itemLevel or (entry and entry.level)
+        itemLevel = itemLevel or (entry and entry[2])
         local band = FoodBand(petLevel, itemLevel)
         if band == 0 then return end
         local food = {
@@ -126,6 +132,7 @@ end
 function Pet:ApplyActions()
     HS:RunOutOfCombat(function()
         local food = self.food
+        self.armedFood = food
         local feed = S.Name(S.FEED_PET) or "Feed Pet"
         local mend = S.Name(S.MEND_PET) or "Mend Pet"
         -- "*" so shift/ctrl/alt clicks and modified key bindings still match.
@@ -519,7 +526,14 @@ end
 function Pet:OnInitialize()
     self:Build()
     self.events = HS:Events(self)
+    self.refused = {}
     healthCurve = BuildHealthCurve(self.db.mendThreshold)
+    -- Note what a left-click is about to feed, so a refusal can be pinned on it.
+    local function noteFeed(_, button)
+        if button == "LeftButton" then self.lastFeed = { food = self.armedFood, time = GetTime() } end
+    end
+    self.card:HookScript("PreClick", noteFeed)
+    self.feedButton:HookScript("PreClick", noteFeed)
 end
 
 local function FullUpdate(self)
@@ -549,6 +563,18 @@ function Pet:OnEnable()
         end
     end)
     ev:On("PLAYER_REGEN_ENABLED", function() FullUpdate(self) end)
+    -- The game refusing a food (wrong diet, too low level) beats our table and
+    -- level bands: skip that item for this pet and pick the next one.
+    ev:On("UI_ERROR_MESSAGE", function(_, _, _, message)
+        local last = self.lastFeed
+        message = C.Readable(message)
+        if not (last and last.food and message) or GetTime() - last.time > 3 then return end
+        if message == _G.SPELL_FAILED_WRONG_PET_FOOD or message == _G.SPELL_FAILED_FOOD_LOWLEVEL then
+            self.refused[last.food.itemID] = true
+            self.lastFeed = nil
+            self:UpdateFood()
+        end
+    end)
     self:Layout()
     FullUpdate(self)
 end
