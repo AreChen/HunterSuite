@@ -1,27 +1,44 @@
-## Interface: 20505
-## Title: |cff00ff00Hunter Suite|r
-## Notes: Complete Hunter toolkit: Pet feeding, Auto Shot timer, Trap timer, Range/Dead Zone, Ammo warning, Sting tracking, and more!
+## Interface: 16001, 20505
+## Title: |cffabd473Hunter|r|cffe8eaedSuite|r
+## Notes: The complete Hunter toolkit for WoW Forever: pet card with one-click feeding and mending, Auto Shot timer with aim window, dead-zone range, trap and sting timers, ammo and aspect alerts.
 ## Author: Cascade
-## Version: 3.1.0
+## Version: 4.0.0
 ## SavedVariables: HunterSuiteDB
+## SavedVariablesPerCharacter: HunterSuiteCharDB
+## OptionalDeps: LibSharedMedia-3.0, SharedMedia, EllesmereUI
+## IconTexture: Interface\AddOns\HunterSuite\Media\Textures\Logo
+## Category: Combat
 ## X-Category: Hunter
+## AddonCompartmentFunc: HunterSuite_OnAddonCompartmentClick
+## AddonCompartmentFuncOnEnter: HunterSuite_OnAddonCompartmentEnter
+## AddonCompartmentFuncOnLeave: HunterSuite_OnAddonCompartmentLeave
 
 Libs\LibStub\LibStub.lua
 Libs\LibRangeCheck-3.0\LibRangeCheck-3.0.lua
-Libs\StdUi\StdUi.xml
 
-Core.lua
-FoodDatabase.lua
-Modules\PetFeed.lua
-Modules\AutoShot.lua
+Init.lua
+Compat.lua
+Data\Spells.lua
+Data\Food.lua
+
+UI\Theme.lua
+UI\Widgets.lua
+UI\Movers.lua
+UI\Alerts.lua
+
+Modules\PetBar.lua
+Modules\PetAlert.lua
+Modules\ShotTimer.lua
+Modules\Range.lua
 Modules\Aspects.lua
 Modules\Growl.lua
-Modules\Traps.lua
-Modules\Range.lua
+Modules\Tracking.lua
 Modules\Ammo.lua
+Modules\Traps.lua
 Modules\Stings.lua
-Modules\PetReminder.lua
 Modules\AutoMark.lua
 Modules\WeavingBar.lua
-MinimapButton.lua
-SettingsUI.lua
+
+UI\Options.lua
+UI\Config.lua
+UI\Minimap.lua

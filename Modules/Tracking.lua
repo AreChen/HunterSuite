@@ -1,203 +1,122 @@
--- HunterSuite Tracking Module
--- Track Humanoids reminder for BGs
+--[[
+    HunterSuite - tracking reminder
+    Battlegrounds: remind to Track Humanoids. "Always" mode: remind when no
+    tracking is active at all. Forever makes hunter trackers self-buffs, so
+    both the minimap tracking list and the player's buffs are checked.
+]]
 
-local Tracking = {}
-HunterSuite.Tracking = Tracking
+local _, HS = ...
+local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local trackingFrame = nil
-local trackingText = nil
-local trackBtn = nil
-local lastRemind = 0
+local Tracking = HS:NewModule("tracking", { title = "Tracking Reminder" })
 
--- Create the tracking reminder
-function Tracking:CreateReminder()
-    if trackingFrame then return trackingFrame end
-    
-    local db = HunterSuite.db.tracking
-    
-    trackingFrame = CreateFrame("Frame", "HunterSuiteTracking", UIParent, "BackdropTemplate")
-    trackingFrame:SetSize(160, 28)
-    trackingFrame:SetPoint(db.position.point or "CENTER", UIParent, db.position.point or "CENTER", db.position.x or 0, db.position.y or 160)
-    trackingFrame:SetFrameStrata("HIGH")
-    trackingFrame:SetMovable(true)
-    trackingFrame:EnableMouse(true)
-    trackingFrame:RegisterForDrag("LeftButton")
-    trackingFrame:SetClampedToScreen(true)
-    
-    trackingFrame:SetBackdrop({
-        bgFile = [[Interface\Buttons\WHITE8X8]],
-        edgeFile = [[Interface\Buttons\WHITE8X8]],
-        tile = false,
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 }
-    })
-    trackingFrame:SetBackdropColor(0.5, 0.3, 0.6, 0.95)
-    trackingFrame:SetBackdropBorderColor(0.6, 0.4, 0.7, 1)
-    
-    trackingText = trackingFrame:CreateFontString(nil, "OVERLAY")
-    trackingText:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE")
-    trackingText:SetPoint("LEFT", trackingFrame, "LEFT", 8, 0)
-    trackingText:SetText("Track Humanoids!")
-    trackingText:SetTextColor(1, 1, 0.3, 1)
-    
-    -- Secure button for tracking
-    trackBtn = CreateFrame("Button", "HunterSuiteTrackBtn", trackingFrame, "SecureActionButtonTemplate, BackdropTemplate")
-    trackBtn:SetSize(50, 20)
-    trackBtn:SetPoint("RIGHT", trackingFrame, "RIGHT", -4, 0)
-    trackBtn:SetAttribute("type", "spell")
-    trackBtn:SetAttribute("spell", "Track Humanoids")
-    
-    trackBtn:SetBackdrop({
-        bgFile = [[Interface\Buttons\WHITE8X8]],
-        edgeFile = [[Interface\Buttons\WHITE8X8]],
-        edgeSize = 1,
-    })
-    trackBtn:SetBackdropColor(0.3, 0.5, 0.3, 1)
-    trackBtn:SetBackdropBorderColor(0.4, 0.6, 0.4, 1)
-    
-    local btnText = trackBtn:CreateFontString(nil, "OVERLAY")
-    btnText:SetFont(STANDARD_TEXT_FONT, 9, "OUTLINE")
-    btnText:SetPoint("CENTER")
-    btnText:SetText("Track")
-    btnText:SetTextColor(1, 1, 1, 1)
-    
-    trackBtn:SetScript("OnEnter", function(self)
-        self:SetBackdropColor(0.4, 0.6, 0.4, 1)
-    end)
-    trackBtn:SetScript("OnLeave", function(self)
-        self:SetBackdropColor(0.3, 0.5, 0.3, 1)
-    end)
-    
-    -- Dragging
-    trackingFrame:SetScript("OnDragStart", function(self)
-        if not HunterSuite.db.tracking.locked then
-            self:StartMoving()
-        end
-    end)
-    trackingFrame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, _, x, y = self:GetPoint()
-        HunterSuite.db.tracking.position.point = point
-        HunterSuite.db.tracking.position.x = x
-        HunterSuite.db.tracking.position.y = y
-    end)
-    
-    -- Right click to dismiss
-    trackingFrame:SetScript("OnMouseUp", function(self, button)
-        if button == "RightButton" then
-            self:Hide()
-            lastRemind = GetTime()
-        end
-    end)
-    
-    trackingFrame:Hide()
-    
-    -- Register events
-    trackingFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    trackingFrame:RegisterEvent("MINIMAP_UPDATE_TRACKING")
-    trackingFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-    trackingFrame:SetScript("OnEvent", function(self, event, ...)
-        Tracking:OnEvent(event, ...)
-    end)
-    
-    self.trackingFrame = trackingFrame
-    return trackingFrame
-end
+local trackIDs, trackNames = {}, {}
+local humanoidID = S.TRACKING.humanoids
+local lastCast        -- tracking spell cast while auras were unreadable
 
--- Check if in battleground
-function Tracking:IsInBattleground()
-    local _, instanceType = IsInInstance()
-    return instanceType == "pvp" or instanceType == "arena"
-end
-
--- Check current tracking
-function Tracking:IsTrackingHumanoids()
-    -- Try modern API first
-    if C_Minimap and C_Minimap.GetNumTrackingTypes then
-        for i = 1, C_Minimap.GetNumTrackingTypes() do
-            local info = C_Minimap.GetTrackingInfo(i)
-            if info and info.active and info.name == "Track Humanoids" then
-                return true
-            end
-        end
-    else
-        -- Fallback to older API
-        for i = 1, GetNumTrackingTypes() do
-            local name, _, active = GetTrackingInfo(i)
-            if active and name == "Track Humanoids" then
-                return true
-            end
-        end
+function Tracking:IsSupported()
+    for _, id in pairs(S.TRACKING) do
+        if C.IsKnown(id) then return true end
     end
     return false
 end
 
--- Handle events
-function Tracking:OnEvent(event, ...)
-    self:CheckTracking()
+-- Returns active tracking spell IDs/names (set), or nil when unreadable.
+function Tracking:ActiveSet()
+    local active = {}
+    for i = 1, C.GetNumTracking() do
+        local name, isActive, spellID = C.GetTrackingInfo(i)
+        if C.Readable(isActive) then
+            if spellID then active[spellID] = true end
+            if name then active[name] = true end
+        end
+    end
+    local scanned = C.ForEachAura("player", "HELPFUL|PLAYER", function(aura)
+        if trackIDs[aura.spellId] or (aura.name and trackNames[aura.name]) then
+            active[aura.spellId] = true
+            if aura.name then active[aura.name] = true end
+        end
+    end)
+    if scanned then
+        lastCast = nil
+    elseif lastCast then
+        -- Battlegrounds hide auras; trust the tracking the player just cast.
+        active[lastCast] = true
+        local name = S.Name(lastCast)
+        if name then active[name] = true end
+    elseif not next(active) then
+        return nil
+    end
+    return active
 end
 
--- Check tracking and show reminder if needed
-function Tracking:CheckTracking()
-    if not trackingFrame then return end
-    
-    local db = HunterSuite.db.tracking
-    
-    if not db.enabled or not HunterSuite.state.isHunter then
-        trackingFrame:Hide()
-        return
+function Tracking:Evaluate()
+    local db = self.db
+    local active = self:ActiveSet()
+    if active == nil then return end -- keep whatever we showed until reads are allowed
+
+    local show, title, text, icon
+    if db.mode == "pvp" then
+        local humanoidName = S.Name(humanoidID)
+        if C.IsInPvP() and C.IsKnown(humanoidID) and not (active[humanoidID] or (humanoidName and active[humanoidName])) then
+            show, title, text = true, "Track Humanoids", "You are in a battleground"
+            icon = S.Icon(humanoidID)
+        end
+    elseif db.mode == "always" then
+        local any = false
+        for key in pairs(active) do
+            if trackIDs[key] or trackNames[key] then any = true break end
+        end
+        if not any and not IsResting() then
+            show, title, text = true, "No tracking active", "Pick a tracking from your spellbook"
+            icon = S.Icon(S.TRACKING.beasts)
+        end
     end
-    
-    -- Edit mode - show sample
-    if HunterSuite.state.editMode then
-        trackingFrame:Show()
-        return
-    end
-    
-    -- Only show in BG if configured
-    if db.bgOnly and not self:IsInBattleground() then
-        trackingFrame:Hide()
-        return
-    end
-    
-    -- Throttle reminders
-    local remindInterval = db.remindInterval or 30
-    if GetTime() - lastRemind < remindInterval then
-        return
-    end
-    
-    -- Check if tracking humanoids
-    if self:IsTrackingHumanoids() then
-        trackingFrame:Hide()
+
+    if show then
+        HS.Alerts:Set("tracking", {
+            title = title, text = text, icon = icon or 132328,
+            color = "info", priority = 4,
+            tooltip = "Hunters can track one creature type at a time.",
+        })
     else
-        trackingFrame:Show()
-        lastRemind = GetTime()
+        HS.Alerts:Clear("tracking")
     end
 end
 
--- Update visibility
-function Tracking:UpdateUI()
-    if not trackingFrame then return end
-    
-    local db = HunterSuite.db.tracking
-    
-    if not db.enabled or not HunterSuite.state.isHunter then
-        trackingFrame:Hide()
-        return
+function Tracking:OnInitialize()
+    for _, id in pairs(S.TRACKING) do
+        trackIDs[id] = true
+        local name = S.Name(id)
+        if name then trackNames[name] = true end
     end
-    
-    trackingFrame:SetScale(db.scale or 1)
-    trackingFrame:SetAlpha(db.alpha or 1)
-    
-    if HunterSuite.state.editMode then
-        trackingFrame:Show()
-    else
-        self:CheckTracking()
-    end
+    self.events = HS:Events(self)
 end
 
--- Initialize
-function Tracking:Init()
-    self:CreateReminder()
-    self:UpdateUI()
+function Tracking:OnEnable()
+    local ev = self.events
+    local function update() self:Evaluate() end
+    ev:On("MINIMAP_UPDATE_TRACKING", update)
+    ev:On("UNIT_AURA", update, "player")
+    ev:On("PLAYER_ENTERING_WORLD", function() C_Timer.After(1, update) end)
+    ev:On("ZONE_CHANGED_NEW_AREA", update)
+    ev:On("PLAYER_REGEN_ENABLED", update)
+    ev:On("PLAYER_UPDATE_RESTING", update)
+    ev:On("UNIT_SPELLCAST_SUCCEEDED", function(_, _, _, _, spellID)
+        spellID = C.Readable(spellID)
+        if spellID and trackIDs[spellID] then
+            lastCast = spellID
+            update()
+        end
+    end, "player")
+    update()
+end
+
+function Tracking:OnDisable()
+    self.events:OffAll()
+    HS.Alerts:Clear("tracking")
+end
+
+function Tracking:Refresh()
+    self:Evaluate()
 end

@@ -55,6 +55,10 @@ local isEra = WOW_PROJECT_ID == WOW_PROJECT_CLASSIC
 local isTBC = WOW_PROJECT_ID == WOW_PROJECT_BURNING_CRUSADE_CLASSIC
 local isCata = WOW_PROJECT_ID == WOW_PROJECT_CATACLYSM_CLASSIC
 local isMidnight = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE and interfaceVersion >= 120000
+-- HunterSuite patch: WoW Forever (WOW_PROJECT_CAMELOT) runs the 12.x engine with
+-- the same secret GUIDs and lacks LEARNED_SPELL_IN_TAB, so treat it like Midnight.
+local isForever = WOW_PROJECT_CAMELOT ~= nil and WOW_PROJECT_ID == WOW_PROJECT_CAMELOT
+isMidnight = isMidnight or isForever
 
 local InCombatLockdownRestriction = function(unit) return InCombatLockdown() and not UnitCanAttack("player", unit) end
 

@@ -1,261 +1,196 @@
--- HunterSuite Range Module
--- Range indicator using LibRangeCheck-3.0
+--[[
+    HunterSuite - range and dead zone
+    Melee, dead zone (between melee and the 8 yd Auto Shot minimum), in
+    range, or too far. Uses Forever's swing-range checks first, then spell
+    ranges, then LibRangeCheck for the yard estimate.
+]]
 
-local Range = {}
-HunterSuite.Range = Range
+local _, HS = ...
+local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
--- Get the library
-local rc = LibStub("LibRangeCheck-3.0")
+local Range = HS:NewModule("range", { title = "Range" })
 
-local rangeFrame = nil
-local rangeText = nil
-local lastUpdate = 0
+local RANGED, MELEE = C.SwingType.Ranged, C.SwingType.MainHand
+local rc = LibStub and LibStub("LibRangeCheck-3.0", true)
 
-local currentMinRange = nil
-local currentMaxRange = nil
-local maxRangedRange = 35  -- Base ranged attack range, adjusted by Hawk Eye talent
-local autoShotInRange = nil  -- Direct check: is Auto Shot usable on target?
+local STATES = {
+    melee   = { label = "Melee",       color = "warn" },
+    dead    = { label = "Dead zone",   color = "purple" },
+    inrange = { label = "In range",    color = "good" },
+    far     = { label = "Too far",     color = "danger" },
+    unknown = { label = "...",         color = "textDim" },
+    none    = { label = "No target",   color = "textMute" },
+}
 
--- Hawk Eye talent: Survival tree, increases range by 2 yards per point (max 6 yards)
-local HAWK_EYE_TALENT_TAB = 3  -- Survival
-local HAWK_EYE_TALENT_INDEX = 3  -- 3rd talent in Survival tree
-local HAWK_EYE_RANGE_PER_POINT = 2
-local AUTO_SHOT_NAME = GetSpellInfo(75) or "Auto Shot"  -- Localized Auto Shot name
-
--- Check for Hawk Eye talent and update max range
-local function UpdateMaxRange()
-    local baseRange = 35
-    local hawkEyeBonus = 0
-    
-    -- GetTalentInfo(tabIndex, talentIndex) returns: name, iconPath, tier, column, currentRank, maxRank, ...
-    local _, _, _, _, currentRank = GetTalentInfo(HAWK_EYE_TALENT_TAB, HAWK_EYE_TALENT_INDEX)
-    if currentRank and currentRank > 0 then
-        hawkEyeBonus = currentRank * HAWK_EYE_RANGE_PER_POINT
-    end
-    
-    maxRangedRange = baseRange + hawkEyeBonus
+function Range:Build()
+    local f = UI:Element("HunterSuiteRange", self.db, "Range")
+    f:SetSize(96, 22)
+    UI:Surface(f, { radius = 6, color = "bg", border = { 1, 1, 1, 0.08 }, shadow = true })
+    f.dot = f:CreateTexture(nil, "ARTWORK")
+    f.dot:SetTexture(UI.tex.circle)
+    f.dot:SetSize(8, 8)
+    f.dot:SetPoint("LEFT", 9, 0)
+    f.text = UI:Text(f, { size = 11 })
+    f.text:SetPoint("LEFT", f.dot, "RIGHT", 6, 0)
+    f.text:SetPoint("RIGHT", -8, 0)
+    f.text:SetJustifyH("LEFT")
+    f:Hide()
+    self.frame = f
+    f:SetScript("OnUpdate", function(_, elapsed) Range:OnUpdate(elapsed) end)
+    HS.Movers:Register(f, { label = "Range", defaultPath = "range.position", module = "range",
+        hidden = function() return Range.docked end })
 end
 
--- Create the range indicator
-function Range:CreateIndicator()
-    if rangeFrame then return rangeFrame end
-    
-    local db = HunterSuite.db.range
-    
-    rangeFrame = CreateFrame("Frame", "HunterSuiteRange", UIParent, "BackdropTemplate")
-    rangeFrame:SetPoint(db.position.point or "CENTER", UIParent, db.position.point or "CENTER", db.position.x or 120, db.position.y or -240)
-    rangeFrame:SetFrameStrata("MEDIUM")
-    rangeFrame:SetMovable(true)
-    rangeFrame:EnableMouse(true)
-    rangeFrame:RegisterForDrag("LeftButton")
-    rangeFrame:SetClampedToScreen(true)
-    
-    rangeFrame:SetBackdrop({
-        bgFile = [[Interface\Buttons\WHITE8X8]],
-        edgeFile = [[Interface\Buttons\WHITE8X8]],
-        tile = false,
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 }
-    })
-    rangeFrame:SetBackdropColor(0.2, 0.7, 0.2, 0.9)
-    rangeFrame:SetBackdropBorderColor(0.3, 0.8, 0.3, 1)
-    
-    rangeText = rangeFrame:CreateFontString(nil, "OVERLAY")
-    rangeText:SetFont(STANDARD_TEXT_FONT, 10, "OUTLINE")
-    rangeText:SetPoint("CENTER", rangeFrame, "CENTER", 0, 0)
-    rangeText:SetText("IN RANGE")
-    rangeText:SetTextColor(1, 1, 1, 1)
-    
-    -- Apply initial style
-    self:ApplyStyle()
-    
-    -- Dragging (only in edit mode)
-    rangeFrame:SetScript("OnDragStart", function(self)
-        if HunterSuite.state.editMode then
-            self:StartMoving()
-        end
-    end)
-    rangeFrame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, _, x, y = self:GetPoint()
-        HunterSuite.db.range.position.point = point
-        HunterSuite.db.range.position.x = x
-        HunterSuite.db.range.position.y = y
-    end)
-    
-    -- Throttled update
-    rangeFrame:SetScript("OnUpdate", function(self, elapsed)
-        -- Skip updates in edit mode - keep showing
-        if HunterSuite.state and HunterSuite.state.editMode then
-            rangeFrame:Show()
-            return
-        end
-        
-        lastUpdate = lastUpdate + elapsed
-        local updateInterval = 1 / (HunterSuite.db.range.updateHz or 10)
-        if lastUpdate >= updateInterval then
-            lastUpdate = 0
-            Range:CheckRange()
-        end
-    end)
-    
-    rangeFrame:Hide()
-    
-    self.rangeFrame = rangeFrame
-    return rangeFrame
-end
-
--- Check range to target using LibRangeCheck-3.0
-function Range:CheckRange()
-    if not rangeFrame then return end
-    
-    local db = HunterSuite.db.range
-    
-    -- Edit mode - show sample
-    if HunterSuite.state.editMode then
-        rangeFrame:Show()
-        currentMinRange = 15
-        currentMaxRange = 25
-        self:UpdateDisplay()
-        return
-    end
-    
-    if not db.enabled or not HunterSuite.state.isHunter then
-        rangeFrame:Hide()
-        return
-    end
-    
-    -- Check if we have a valid hostile target
-    local hasValidTarget = UnitExists("target") and UnitCanAttack("player", "target") and not UnitIsDead("target")
-    
-    if not hasValidTarget then
-        if db.showAlways then
-            currentMinRange = nil
-            currentMaxRange = nil
-            self:UpdateDisplay()
-            rangeFrame:Show()
-        else
-            rangeFrame:Hide()
-        end
-        return
-    end
-    
-    -- Get range from LibRangeCheck-3.0
-    currentMinRange, currentMaxRange = rc:GetRange("target")
-    
-    -- Also check Auto Shot directly - this accounts for Hawk Eye automatically
-    local inRange = IsSpellInRange(AUTO_SHOT_NAME, "target")
-    autoShotInRange = (inRange == 1)
-    
-    self:UpdateDisplay()
-    rangeFrame:Show()
-end
-
--- Update display based on range
-function Range:UpdateDisplay()
-    if not rangeFrame then return end
-    
-    local db = HunterSuite.db.range
-    local style = db.style or "text"
-    
-    local r, g, b = 1, 1, 1
-    local text = ""
-    
-    if currentMinRange == nil and currentMaxRange == nil then
-        -- No target
-        r, g, b = 0.5, 0.5, 0.5  -- Gray
-        text = "NO TARGET"
-    elseif currentMinRange and currentMinRange < 8 then
-        -- Dead zone (too close for ranged)
-        r, g, b = 0.8, 0.2, 0.8  -- Purple
-        text = "DEAD ZONE"
-    elseif autoShotInRange then
-        -- Auto Shot says we're in range (most reliable, includes Hawk Eye)
-        r, g, b = 0.2, 0.9, 0.2  -- Green
-        if currentMinRange and currentMaxRange then
-            text = string.format("%d - %d", currentMinRange, currentMaxRange)
-        else
-            text = "IN RANGE"
-        end
-    elseif autoShotInRange == false or (currentMinRange and currentMinRange >= maxRangedRange) then
-        -- Auto Shot says out of range, or LibRangeCheck says too far
-        r, g, b = 0.9, 0.2, 0.2  -- Red
-        text = "TOO FAR"
-    else
-        -- Unknown/transitional
-        r, g, b = 1.0, 0.8, 0.0  -- Yellow
-        if currentMinRange and currentMaxRange then
-            text = string.format("%d - %d", currentMinRange, currentMaxRange)
-        elseif currentMinRange then
-            text = string.format("%d+", currentMinRange)
-        else
-            text = "???"
-        end
-    end
-    
-    -- Set colors
-    rangeFrame:SetBackdropColor(r * 0.3, g * 0.3, b * 0.3, 0.9)
-    rangeFrame:SetBackdropBorderColor(r * 0.5, g * 0.5, b * 0.5, 1)
-    rangeText:SetTextColor(r, g, b, 1)
-    
-    -- Set text
+function Range:Layout()
+    local f, db = self.frame, self.db
+    local style = db.style
     if style == "dot" then
-        rangeText:Hide()
+        f:SetSize(18, 18)
+        f.text:Hide()
+        f.dot:ClearAllPoints()
+        f.dot:SetPoint("CENTER")
+        f.dot:SetSize(10, 10)
     else
-        rangeText:Show()
-        rangeText:SetText(text)
+        f:SetSize(style == "text" and 86 or 104, 22)
+        f.text:Show()
+        f.dot:ClearAllPoints()
+        f.dot:SetPoint("LEFT", 9, 0)
+        f.dot:SetSize(8, 8)
+    end
+    local surf = f.__hsSurface
+    if surf then
+        surf.bg:SetShown(style ~= "text")
+        if surf.ring then surf.ring:SetShown(style ~= "text") end
+        if surf.edges then surf.edges:SetShown(style ~= "text") end
+    end
+    if f.__hsShadow then
+        f.__hsShadow.hsForceHidden = style == "text"
+        f.__hsShadow:SetShown(style ~= "text" and HS.db.appearance.shadows)
+    end
+
+    -- Dock to the Auto Shot bar when asked.
+    local shot = HS:GetModule("shotTimer")
+    f:ClearAllPoints()
+    if db.attach and shot and shot.enabled and shot.frame then
+        f:SetScale(HS.db.appearance.scale or 1)
+        f:SetPoint("LEFT", shot.frame.bar, "RIGHT", 6, 0)
+        self.docked = true
+    else
+        self.docked = false
+        UI:ApplyPosition(f)
     end
 end
 
--- Apply style (text or dot)
-function Range:ApplyStyle()
-    if not rangeFrame then return end
-    
-    local db = HunterSuite.db.range
-    local style = db.style or "text"
-    
-    if style == "dot" then
-        rangeFrame:SetSize(16, 16)
-        rangeText:Hide()
-    else  -- "text"
-        rangeFrame:SetSize(80, 22)  -- Slightly wider for "XX - XX" format
-        rangeText:Show()
+-- Returns a state key plus a min/max yard estimate.
+function Range:Classify()
+    if not UnitExists("target") or UnitIsDead("target") or not UnitCanAttack("player", "target") then
+        return "none"
     end
-    
-    -- Re-apply current display
-    self:UpdateDisplay()
+    local minR, maxR
+    if rc then
+        local ok, a, b = pcall(rc.GetRange, rc, "target")
+        if ok then minR, maxR = C.Readable(a), C.Readable(b) end
+    end
+
+    local melee = C.IsInSwingRange(MELEE)
+    if melee == nil then
+        melee = C.IsSpellInRange(S.Name(S.RAPTOR_STRIKE), "target")
+        if melee == nil then melee = C.IsSpellInRange(S.Name(S.WING_CLIP), "target") end
+    end
+    local ranged = C.IsInSwingRange(RANGED)
+    if ranged == nil then ranged = C.IsSpellInRange(S.AUTO_SHOT, "target") end
+
+    if melee then return "melee", minR, maxR end
+    if ranged then return "inrange", minR, maxR end
+    if (maxR and maxR <= 8) or (minR and minR < 8 and ranged == false) then return "dead", minR, maxR end
+    if ranged == false then return "far", minR, maxR end
+    if minR and minR >= 35 then return "far", minR, maxR end
+    return "unknown", minR, maxR
 end
 
--- Update visibility
-function Range:UpdateUI()
-    if not rangeFrame then return end
-    
-    local db = HunterSuite.db.range
-    
-    if not db.enabled or not HunterSuite.state.isHunter then
-        rangeFrame:Hide()
+local accum = 0
+function Range:OnUpdate(elapsed)
+    if HS.state.editMode then return end
+    accum = accum + elapsed
+    if accum < 1 / (self.db.updateHz or 12) then return end
+    accum = 0
+    self:Update()
+end
+
+function Range:Paint(key, minR, maxR)
+    local f, db = self.frame, self.db
+    local spec = STATES[key]
+    local r, g, b = UI:Color(spec.color)
+    f.dot:SetVertexColor(r, g, b)
+    local text = spec.label
+    if db.showYards and (key == "inrange" or key == "far" or key == "unknown") and minR then
+        if maxR then
+            text = ("%d-%d yd"):format(minR, maxR)
+        else
+            text = ("%d+ yd"):format(minR)
+        end
+    end
+    f.text:SetText(text)
+    f.text:SetTextColor(r * 0.4 + 0.6, g * 0.4 + 0.6, b * 0.4 + 0.6)
+    UI:SetBorderColor(f, { r, g, b, 0.35 })
+end
+
+function Range:Update()
+    local key, minR, maxR = self:Classify()
+    local f = self.frame
+    if key == "none" and not self.db.showNoTarget then
+        f:SetAlpha(0)
+        self.hidden = true
         return
     end
-    
-    rangeFrame:SetScale(db.scale or 1)
-    rangeFrame:SetAlpha(db.alpha or 1)
-    self:ApplyStyle()
-    
-    self:CheckRange()
+    if self.hidden then
+        self.hidden = false
+        UI:FadeTo(f, 1, 0.15)
+    end
+    self:Paint(key, minR, maxR)
 end
 
--- Initialize
-function Range:Init()
-    self:CreateIndicator()
-    UpdateMaxRange()  -- Check Hawk Eye talent on init
-    self:UpdateUI()
-    
-    -- Re-check talents when they change (respec, etc.)
-    local talentFrame = CreateFrame("Frame")
-    talentFrame:RegisterEvent("CHARACTER_POINTS_CHANGED")
-    talentFrame:RegisterEvent("PLAYER_TALENT_UPDATE")
-    talentFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    talentFrame:SetScript("OnEvent", function()
-        UpdateMaxRange()
-    end)
+function Range:OnInitialize()
+    self:Build()
+    self.events = HS:Events(self)
 end
+
+function Range:OnEnable()
+    C.EnableSwingRangeCheck(RANGED)
+    C.EnableSwingRangeCheck(MELEE)
+    self.events:On("PLAYER_TARGET_CHANGED", function() self:Update() end)
+    self.events:On("PLAYER_SWING_RANGE_UPDATE", function() self:Update() end)
+    self:Layout()
+    self.frame:SetAlpha(0)
+    self.hidden = true
+    self.frame:Show()
+    self:Update()
+end
+
+function Range:OnDisable()
+    self.events:OffAll()
+    self.frame:Hide()
+end
+
+function Range:Refresh()
+    self:Layout()
+    self:Update()
+end
+
+HS:On("EDIT_MODE", function(on)
+    if not Range.enabled then return end
+    if on then
+        Range.frame:SetAlpha(1)
+        Range:Paint("dead")
+    else
+        Range:Update()
+    end
+end)
+
+-- Re-dock when the Auto Shot bar moves or is toggled.
+HS:On("ELEMENT_MOVED", function()
+    if Range.enabled and Range.docked then Range:Layout() end
+end)
+HS:On("MODULE_TOGGLED", function(key)
+    if key == "shotTimer" and Range.enabled then Range:Layout() end
+end)

@@ -1,220 +1,152 @@
 --[[
-    HunterSuite - Aspect Reminder Module
-    Alerts when no aspect is active
+    HunterSuite - aspect reminder
+    Warns when no aspect is up, and when Cheetah or Pack is still on in
+    combat (you get dazed). Aura data is secret in combat on Forever, so the
+    active aspect comes from an aura scan whenever reads are allowed and is
+    kept current in combat from your own aspect casts.
 ]]
 
-local addonName, HunterSuite = ...
+local _, HS = ...
+local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-HunterSuite.Aspects = {}
-local Aspects = HunterSuite.Aspects
+local Aspects = HS:NewModule("aspects", { title = "Aspect Reminder" })
 
--- Aspect spell names (TBC)
-local ASPECT_SPELLS = {
-    "Aspect of the Hawk",
-    "Aspect of the Monkey",
-    "Aspect of the Cheetah",
-    "Aspect of the Pack",
-    "Aspect of the Beast",
-    "Aspect of the Wild",
-    "Aspect of the Viper",
-}
+local idToAspect, nameToAspect = {}, {}
+local current            -- aspect entry or nil
+local snoozedUntil = 0
 
--- Local references
-local alertFrame = nil
-local alertText = nil
-local pulseAnim = nil
-local hasAspect = false
-local lastCheck = 0
-local dismissedUntil = 0
-
--- Create the alert frame
-function Aspects:CreateAlert()
-    if alertFrame then return alertFrame end
-    
-    local db = HunterSuite.db.aspects
-    
-    alertFrame = CreateFrame("Frame", "HunterSuiteAspectAlert", UIParent, "BackdropTemplate")
-    alertFrame:SetSize(200, 30)
-    alertFrame:SetPoint(db.position.point or "TOP", UIParent, db.position.point or "TOP", db.position.x or 0, db.position.y or -100)
-    alertFrame:SetFrameStrata("HIGH")
-    alertFrame:SetMovable(true)
-    alertFrame:EnableMouse(true)
-    alertFrame:RegisterForDrag("LeftButton")
-    alertFrame:SetClampedToScreen(true)
-    
-    alertFrame:SetBackdrop({
-        bgFile = [[Interface\Buttons\WHITE8X8]],
-        edgeFile = [[Interface\Buttons\WHITE8X8]],
-        tile = false,
-        edgeSize = 1,
-        insets = { left = 1, right = 1, top = 1, bottom = 1 }
-    })
-    alertFrame:SetBackdropColor(0.6, 0.1, 0.1, 0.9)
-    alertFrame:SetBackdropBorderColor(0.8, 0.2, 0.2, 1)
-    
-    -- Alert text
-    local db = HunterSuite.db.aspects
-    alertText = alertFrame:CreateFontString(nil, "OVERLAY")
-    alertText:SetFont(STANDARD_TEXT_FONT, db.fontSize or 14, "OUTLINE")
-    alertText:SetPoint("CENTER", alertFrame, "CENTER", 0, 0)
-    alertText:SetText(db.alertText or "NO ASPECT!")
-    alertText:SetTextColor(1, 1, 0.3, 1)
-    
-    -- Pulse animation
-    local ag = alertFrame:CreateAnimationGroup()
-    ag:SetLooping("REPEAT")
-    
-    local fade1 = ag:CreateAnimation("Alpha")
-    fade1:SetFromAlpha(1)
-    fade1:SetToAlpha(0.5)
-    fade1:SetDuration(0.5)
-    fade1:SetOrder(1)
-    
-    local fade2 = ag:CreateAnimation("Alpha")
-    fade2:SetFromAlpha(0.5)
-    fade2:SetToAlpha(1)
-    fade2:SetDuration(0.5)
-    fade2:SetOrder(2)
-    
-    pulseAnim = ag
-    
-    -- Dragging (only in edit mode)
-    alertFrame:SetScript("OnDragStart", function(self)
-        if HunterSuite.state.editMode then
-            self:StartMoving()
-        end
-    end)
-    alertFrame:SetScript("OnDragStop", function(self)
-        self:StopMovingOrSizing()
-        local point, _, _, x, y = self:GetPoint()
-        HunterSuite.db.aspects.position.point = point
-        HunterSuite.db.aspects.position.x = x
-        HunterSuite.db.aspects.position.y = y
-    end)
-    
-    -- Click to dismiss temporarily
-    alertFrame:SetScript("OnMouseUp", function(self, button)
-        if button == "RightButton" then
-            self:Hide()
-            local duration = HunterSuite.db.aspects.dismissDuration or 30
-            dismissedUntil = GetTime() + duration
-        end
-    end)
-    
-    -- Tooltip
-    alertFrame:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_BOTTOM")
-        GameTooltip:AddLine("Aspect Reminder", 1, 1, 1)
-        GameTooltip:AddLine("You don't have an aspect active!", 1, 0.5, 0.5)
-        GameTooltip:AddLine(" ")
-        local duration = HunterSuite.db.aspects.dismissDuration or 30
-        local timeText = duration >= 60 and string.format("%dm", duration / 60) or string.format("%ds", duration)
-        GameTooltip:AddLine("Right-click to dismiss for " .. timeText, 0.7, 0.7, 0.7)
-        if HunterSuite.state.editMode then
-            GameTooltip:AddLine("Drag to move (edit mode)", 0.7, 0.7, 0.7)
-        end
-        GameTooltip:Show()
-    end)
-    alertFrame:SetScript("OnLeave", function()
-        GameTooltip:Hide()
-    end)
-    
-    alertFrame:Hide()
-    
-    -- Register events
-    alertFrame:RegisterEvent("UNIT_AURA")
-    alertFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    alertFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-    alertFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
-    
-    alertFrame:SetScript("OnEvent", function(self, event, ...)
-        if event == "UNIT_AURA" then
-            local unit = ...
-            if unit == "player" then
-                Aspects:CheckAspect()
-            end
-        else
-            Aspects:CheckAspect()
-        end
-    end)
-    
-    self.alertFrame = alertFrame
-    
-    return alertFrame
+local function BuildLookups()
+    wipe(idToAspect)
+    wipe(nameToAspect)
+    for _, aspect in ipairs(S.ASPECTS) do
+        for _, id in ipairs(aspect.ids) do idToAspect[id] = aspect end
+        local name = S.Name(aspect.ids)
+        if name then nameToAspect[name] = aspect end
+    end
 end
 
--- Check if player has an aspect active
-function Aspects:HasAspect()
-    for i = 1, 40 do
-        local name = UnitBuff("player", i)
-        if not name then break end
-        
-        for _, aspect in ipairs(ASPECT_SPELLS) do
-            if name == aspect then
-                return true, name
-            end
-        end
+function Aspects:IsSupported()
+    for _, aspect in ipairs(S.ASPECTS) do
+        if S.Known(aspect.ids) then return true end
     end
-    return false, nil
+    return false
 end
 
--- Check and update alert
-function Aspects:CheckAspect()
-    if not alertFrame then return end
-    
-    -- In edit mode, show the alert for positioning
-    if HunterSuite.state.editMode then
-        alertFrame:Show()
-        alertFrame:SetAlpha(0.8)
-        if pulseAnim then pulseAnim:Stop() end
-        return
-    end
-    
-    local db = HunterSuite.db.aspects
-    
-    if not db.enabled or not HunterSuite.state.isHunter then
-        alertFrame:Hide()
-        return
-    end
-    
-    -- Only alert in combat or when configured
+function Aspects:Scan()
+    local found
+    local scanned = C.ForEachAura("player", "HELPFUL|PLAYER", function(aura)
+        local a = idToAspect[aura.spellId] or (aura.name and nameToAspect[aura.name])
+        if a then
+            found = a
+            return true
+        end
+    end)
+    if scanned then current = found end
+end
+
+local function Suppressed()
+    if UnitIsDeadOrGhost("player") or UnitOnTaxi("player") or IsMounted() then return true end
+    if C_PetBattles and C_PetBattles.IsInBattle and C_PetBattles.IsInBattle() then return true end
+    return false
+end
+
+function Aspects:Evaluate()
+    local db = self.db
     local inCombat = UnitAffectingCombat("player")
-    if db.onlyInCombat and not inCombat then
-        alertFrame:Hide()
-        return
-    end
-    
-    -- Check if dismissed
-    if GetTime() < dismissedUntil then
-        alertFrame:Hide()
-        return
-    end
-    
-    hasAspect, _ = self:HasAspect()
-    
-    if hasAspect then
-        alertFrame:Hide()
-        pulseAnim:Stop()
+    local now = GetTime()
+
+    -- Cheetah / Pack in combat.
+    if current and current.movement and inCombat and db.warnMovementInCombat and not Suppressed() then
+        local name = S.Name(current.ids) or "Movement aspect"
+        HS.Alerts:Set("aspect.movement", {
+            title = name .. " in combat",
+            text = "You will be dazed when hit",
+            icon = S.Icon(current.ids),
+            color = "danger", glow = true, priority = 9,
+            sound = SOUNDKIT and SOUNDKIT.RAID_WARNING,
+            tooltip = "Switch to Aspect of the Hawk or Monkey.",
+        })
     else
-        alertFrame:Show()
-        pulseAnim:Play()
+        HS.Alerts:Clear("aspect.movement")
+    end
+
+    -- No aspect at all.
+    local want = not current and not Suppressed() and now >= snoozedUntil
+    if want and not inCombat then
+        want = not db.onlyInCombat and not IsResting()
+    end
+    if want then
+        local hawk = S.ASPECTS[1]
+        HS.Alerts:Set("aspect.none", {
+            title = "No aspect active",
+            text = inCombat and "You are fighting without an aspect" or "Right-click to snooze",
+            icon = S.Icon(hawk.ids) or 136076,
+            color = inCombat and "danger" or "warn", priority = 6,
+            tooltip = "Cast an aspect, e.g. " .. (S.Name(hawk.ids) or "Aspect of the Hawk") .. ".",
+            dismissHint = ("Right-click to snooze for %ds"):format(db.snooze or 60),
+            onDismiss = function() Aspects:Snooze() end,
+        })
+    else
+        HS.Alerts:Clear("aspect.none")
     end
 end
 
--- Update UI
-function Aspects:UpdateUI()
-    if not alertFrame then return end
-    
-    local db = HunterSuite.db.aspects
-    alertFrame:SetScale(db.scale or 1)
-    alertFrame:SetAlpha(db.alpha or 1)
-    
-    self:CheckAspect()
+function Aspects:Snooze()
+    snoozedUntil = GetTime() + (self.db.snooze or 60)
+    C_Timer.After((self.db.snooze or 60) + 0.1, function()
+        if Aspects.enabled then Aspects:Evaluate() end
+    end)
 end
 
--- Initialize
-function Aspects:Init()
-    self:CreateAlert()
-    self:UpdateUI()
-    self:CheckAspect()
+function Aspects:OnInitialize()
+    BuildLookups()
+    self.events = HS:Events(self)
+end
+
+function Aspects:OnEnable()
+    local ev = self.events
+    local function rescan()
+        self:Scan()
+        self:Evaluate()
+    end
+    ev:On("UNIT_AURA", rescan, "player")
+    ev:On("UNIT_SPELLCAST_SUCCEEDED", function(_, _, _, _, spellID)
+        spellID = C.Readable(spellID)
+        local a = spellID and idToAspect[spellID]
+        if not a and spellID then
+            local name = C.GetSpellName(spellID)
+            a = name and nameToAspect[name]
+        end
+        if a then
+            current = a
+            self:Evaluate()
+        end
+    end, "player")
+    ev:On("PLAYER_DEAD", function() current = nil; self:Evaluate() end)
+    ev:On("PLAYER_ENTERING_WORLD", rescan)
+    ev:On("PLAYER_REGEN_ENABLED", rescan)
+    ev:On("PLAYER_REGEN_DISABLED", function() self:Evaluate() end)
+    ev:On("PLAYER_ALIVE", rescan)
+    ev:On("PLAYER_UNGHOST", rescan)
+    ev:On("PLAYER_UPDATE_RESTING", function() self:Evaluate() end)
+    ev:On("PLAYER_MOUNT_DISPLAY_CHANGED", function() self:Evaluate() end)
+    ev:On("PLAYER_CONTROL_LOST", function() self:Evaluate() end)
+    ev:On("PLAYER_CONTROL_GAINED", function() self:Evaluate() end)
+    rescan()
+end
+
+function Aspects:OnDisable()
+    self.events:OffAll()
+    HS.Alerts:Clear("aspect.none")
+    HS.Alerts:Clear("aspect.movement")
+end
+
+function Aspects:Refresh()
+    BuildLookups()
+    self:Scan()
+    self:Evaluate()
+end
+
+function Aspects:GetCurrent()
+    return current
 end
