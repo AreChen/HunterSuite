@@ -4,14 +4,15 @@
 
 One addon, one clean modern look: your pet, your Auto Shot, your range and every reminder a Hunter needs.
 
-[Download on CurseForge](https://www.curseforge.com/wow/addons/huntersuite-beta) · [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/sniffingpickles/HunterSuite/issues)
+[Download on CurseForge](https://www.curseforge.com/wow/addons/huntersuite) · [Changelog](CHANGELOG.md) · [Report a bug](https://github.com/sniffingpickles/HunterSuite/issues)
 
 ## Features
 
 ### Pet card
 - Portrait, health and mood (Happy / Content / Unhappy) on one card.
 - **Left-click feeds** the best food in your bags. **Right-click casts Mend Pet.**
-- The game tells HunterSuite what your pet will eat. **Smart** mode uses the cheapest food that still gives full happiness, skips food that's too low level, and finishes small stacks first.
+- The game tells HunterSuite what your pet will eat. On Burning Crusade Anniversary it uses a built-in list of every pet food in the game. **Smart** mode uses the cheapest food that still gives full happiness, skips food that's too low level, and finishes small stacks first.
+- If your pet refuses a food, the card moves on to the next one.
 - Glows when your pet is unhappy or below your Mend Pet threshold.
 - Shows up in combat whenever you need it, and stays out of the way when your pet is happy.
 

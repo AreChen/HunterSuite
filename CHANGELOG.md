@@ -1,21 +1,13 @@
-# HunterSuite 4.0.0
+# HunterSuite 4.1.0
 
-**Now built for WoW Forever.** Also runs on Burning Crusade Anniversary.
+A range fix for Forever, and better feeding on Burning Crusade Anniversary.
 
-Rebuilt from the ground up with a new look and every module rewritten for Forever's modern engine, where addons get no combat log and buff, cooldown and health data are hidden in combat.
+### Fixed
+- **Range pill:** no longer shows Melee when you're at range.
+- **Auto Shot bar:** "Out of range" now works with the range pill turned off.
+- **Pet card (Burning Crusade Anniversary):** the old food list had swapped items, wrong food types, guessed levels and Wrath foods that don't exist in TBC.
 
 ### New
-- **Pet card:** portrait, mood, health and the food it will use. Left-click feeds, right-click casts Mend Pet. The game decides what your pet can eat, and Smart mode uses the cheapest food that still gives full happiness.
-- **Pet missing / dead card:** left-click Call Pet, right-click Revive Pet. It appears mid-fight when your pet dies.
-- **Auto Shot timer** on Forever's native swing timer. It shows the 0.5s aim window, warns when you're still moving, flags casts that will clip your shot, and adds a GCD line and shot-delay readout.
-- **Range pill:** Melee, Dead zone (inside 8 yd), In range, Too far.
-- **Alert stack:** no aspect, Cheetah or Pack in combat, Growl on in groups or off while solo, Track Humanoids in battlegrounds. Right-click to dismiss.
-- **Ammo counter** with an estimate of minutes of shooting left. **Trap timers.** **Sting timers** on nameplates.
-- **Settings window** with an overview page and module toggles. Uses your EllesmereUI or SharedMedia fonts automatically.
-- **Edit mode** (`/hs edit`): drag frames, snap to a grid, nudge with the arrow keys, right-click to reset.
-- **Key bindings** for Feed Pet and Mend Pet, plus `/click HunterSuiteFeedButton` for macros.
-- `/hs diag` copies a client report for bug reports.
-
-### Upgrading from 3.x
-- Your module choices and main options carry over.
-- Frame positions reset because every frame is new. Use `/hs edit` to place them.
+- **Pet card:** if your pet refuses a food ("doesn't like that food" or "level is not high enough"), the card moves on to the next food in your bags.
+- **Burning Crusade Anniversary:** every pet food in the game, 443 in all, taken from Blizzard's own data with the real food type and level. Raw meat and raw fish count as their own diets, and diet names work in every client language.
+- **Burning Crusade Anniversary 2.5.6** is listed as supported, so the addon no longer shows as out of date there.

@@ -2,7 +2,7 @@
 ## Title: |cffabd473Hunter|r|cffe8eaedSuite|r
 ## Notes: The complete Hunter toolkit for WoW Forever: pet card with one-click feeding and mending, Auto Shot timer with aim window, dead-zone range, trap and sting timers, ammo and aspect alerts.
 ## Author: muggles
-## Version: 4.0.0
+## Version: 4.1.0
 ## X-Curse-Project-ID: 1447095
 ## SavedVariables: HunterSuiteDB
 ## SavedVariablesPerCharacter: HunterSuiteCharDB
