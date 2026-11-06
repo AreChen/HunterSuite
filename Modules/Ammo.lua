@@ -5,9 +5,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C = HS.UI, HS.Compat
 
-local Ammo = HS:NewModule("ammo", { title = "Ammo" })
+local Ammo = HS:NewModule("ammo", { title = L.AMMO })
 
 local AMMO_SLOT = _G.INVSLOT_AMMO or 0
 local RANGED_SLOT = _G.INVSLOT_RANGED or 18
@@ -27,7 +28,7 @@ function Ammo:NeedsAmmo()
 end
 
 function Ammo:Build()
-    local f = UI:Element("HunterSuiteAmmo", self.db, "Ammo")
+    local f = UI:Element("HunterSuiteAmmo", self.db, L.AMMO)
     f:SetSize(150, 30)
     UI:Surface(f, { radius = 6, color = "bg", border = { 1, 1, 1, 0.08 }, shadow = true })
     f.iconFrame = UI:Icon(f, 20)
@@ -40,14 +41,14 @@ function Ammo:Build()
     f:SetScript("OnEnter", function(btn)
         GameTooltip:SetOwner(btn, "ANCHOR_TOP", 0, 6)
         local link = GetInventoryItemLink("player", AMMO_SLOT)
-        GameTooltip:AddLine(link or "Ammo", 1, 1, 1)
-        GameTooltip:AddLine(("Low below %d, critical below %d."):format(self.db.low, self.db.critical), 0.75, 0.77, 0.8)
+        GameTooltip:AddLine(link or L.AMMO, 1, 1, 1)
+        GameTooltip:AddLine((L.LOW_BELOW_D_CRITICAL_BELOW_D):format(self.db.low, self.db.critical), 0.75, 0.77, 0.8)
         GameTooltip:Show()
     end)
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
     f:Hide()
     self.frame = f
-    HS.Movers:Register(f, { label = "Ammo", defaultPath = "ammo.position", module = "ammo" })
+    HS.Movers:Register(f, { label = L.AMMO, defaultPath = "ammo.position", module = "ammo" })
 end
 
 function Ammo:Paint(count, level, minutes)
@@ -57,11 +58,11 @@ function Ammo:Paint(count, level, minutes)
     f.count:SetText(BreakUpLargeNumbers and BreakUpLargeNumbers(count) or count)
     f.count:SetTextColor(r, g, b)
     if level == "none" then
-        f.count:SetText("No ammo")
+        f.count:SetText(L.NO_AMMO)
         f.count:SetTextColor(UI:Color("danger"))
         f.sub:SetText("")
     elseif minutes then
-        f.sub:SetText(minutes >= 1 and ("~%d min"):format(minutes) or "<1 min")
+        f.sub:SetText(minutes >= 1 and (L.D_MIN):format(minutes) or L.TEXT_1_MIN)
     else
         f.sub:SetText("")
     end

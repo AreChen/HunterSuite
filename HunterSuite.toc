@@ -1,6 +1,8 @@
 ## Interface: 16001, 20505, 20506
 ## Title: |cffabd473Hunter|r|cffe8eaedSuite|r
 ## Notes: The complete Hunter toolkit for WoW Forever: pet card with one-click feeding and mending, Auto Shot timer with aim window, dead-zone range, trap and sting timers, ammo and aspect alerts.
+## Notes-zhCN: 猎人综合辅助工具：宠物喂养与治疗、自动射击计时、射程盲区、陷阱与钉刺计时、弹药和守护提醒。
+## Notes-zhTW: 獵人綜合輔助工具：寵物餵養與治療、自動射擊計時、射程盲區、陷阱與釘刺計時、彈藥和守護提醒。
 ## Author: muggles
 ## Version: 4.1.0
 ## X-Curse-Project-ID: 1447095
@@ -17,10 +19,15 @@
 Libs\LibStub\LibStub.lua
 Libs\LibRangeCheck-3.0\LibRangeCheck-3.0.lua
 
+Locales\enUS.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+
 Init.lua
 Compat.lua
 Data\Spells.lua
 Data\Food.lua
+Data\PetFamilies.lua
 
 UI\Theme.lua
 UI\Widgets.lua

@@ -6,9 +6,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local C = HS.Compat
 
-local AutoMark = HS:NewModule("autoMark", { title = "Auto-Mark Enemy Pets" })
+local AutoMark = HS:NewModule("autoMark", { title = L.AUTO_MARK_ENEMY_PETS_2 })
 
 local SKULL = 8
 local marked = {}

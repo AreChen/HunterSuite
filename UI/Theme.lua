@@ -5,6 +5,7 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 
 local UI = {}
 HS.UI = UI
@@ -90,12 +91,12 @@ end
 
 -- Accent presets offered in Appearance.
 UI.accentPresets = {
-    { name = "Hunter", r = 0.671, g = 0.831, b = 0.451 },
-    { name = "Teal",   r = 0.047, g = 0.824, b = 0.616 },
-    { name = "Amber",  r = 1.000, g = 0.737, b = 0.282 },
-    { name = "Ice",    r = 0.420, g = 0.773, b = 1.000 },
-    { name = "Violet", r = 0.702, g = 0.565, b = 1.000 },
-    { name = "Rose",   r = 1.000, g = 0.443, b = 0.557 },
+    { name = L.HUNTER, r = 0.671, g = 0.831, b = 0.451 },
+    { name = L.TEAL,   r = 0.047, g = 0.824, b = 0.616 },
+    { name = L.AMBER,  r = 1.000, g = 0.737, b = 0.282 },
+    { name = L.ICE,    r = 0.420, g = 0.773, b = 1.000 },
+    { name = L.VIOLET, r = 0.702, g = 0.565, b = 1.000 },
+    { name = L.ROSE,   r = 1.000, g = 0.443, b = 0.557 },
 }
 
 ---------------------------------------------------------------------------
@@ -112,7 +113,7 @@ end
 UI.GetLSM = GetLSM
 
 UI.builtinFonts = {
-    { key = "default", name = "Game default", path = function() return STANDARD_TEXT_FONT end },
+    { key = "default", name = L.GAME_DEFAULT, path = function() return STANDARD_TEXT_FONT end },
     { key = "friz", name = "Friz Quadrata", path = function() return "Fonts\\FRIZQT__.TTF" end },
     { key = "arialn", name = "Arial Narrow", path = function() return "Fonts\\ARIALN.TTF" end },
 }
@@ -144,7 +145,7 @@ function UI:FontPath()
 end
 
 function UI:FontChoices()
-    local list = { { value = "auto", label = "Automatic" } }
+    local list = { { value = "auto", label = L.AUTOMATIC } }
     for _, f in ipairs(self.builtinFonts) do
         list[#list + 1] = { value = f.key, label = f.name }
     end
@@ -241,8 +242,8 @@ end
 
 function UI:TextureChoices()
     local list = {
-        { value = "smooth", label = "HunterSuite Smooth" },
-        { value = "flat", label = "Flat" },
+        { value = "smooth", label = L.HUNTERSUITE_SMOOTH },
+        { value = "flat", label = L.FLAT },
     }
     local lsm = GetLSM()
     if lsm then

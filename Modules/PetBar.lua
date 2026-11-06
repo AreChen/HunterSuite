@@ -7,18 +7,23 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Pet = HS:NewModule("petBar", { title = "Pet Card", secure = true })
+local Pet = HS:NewModule("petBar", { title = L.PET_CARD_2, secure = true })
 
 local HAPPINESS = {
-    [1] = { label = "Unhappy", color = "danger", damage = 75 },
-    [2] = { label = "Content", color = "warn", damage = 100 },
-    [3] = { label = "Happy", color = "good", damage = 125 },
+    [1] = { label = L.UNHAPPY, color = "danger", damage = 75 },
+    [2] = { label = L.CONTENT, color = "warn", damage = 100 },
+    [3] = { label = L.HAPPY, color = "good", damage = 125 },
 }
 Pet.HAPPINESS = HAPPINESS
 
 local Food = HS.Food
+local FOOD_TYPE_LABELS = {
+    L.FOOD_TYPE_MEAT, L.FOOD_TYPE_FISH, L.FOOD_TYPE_CHEESE, L.FOOD_TYPE_BREAD,
+    L.FOOD_TYPE_FUNGUS, L.FOOD_TYPE_FRUIT, L.FOOD_TYPE_RAW_MEAT, L.FOOD_TYPE_RAW_FISH,
+}
 
 ---------------------------------------------------------------------------
 -- Food selection
@@ -34,7 +39,7 @@ local function FoodBand(petLevel, foodLevel)
     return 0                        -- refused
 end
 Pet.FoodBand = FoodBand
-local BAND_LABEL = { [3] = "Full happiness", [2] = "Reduced happiness", [1] = "Low happiness", [0] = "Too low level" }
+local BAND_LABEL = { [3] = L.FULL_HAPPINESS, [2] = L.REDUCED_HAPPINESS, [1] = L.LOW_HAPPINESS, [0] = L.TOO_LOW_LEVEL }
 
 -- A pet eats food type t (Data/Food.lua) when bit t of its diet mask is set.
 local function Eats(mask, foodType)
@@ -50,10 +55,10 @@ function Pet:GetDiet()
         if t and not Eats(mask, t) then mask = mask + 2 ^ (t - 1) end
     end
     if mask == 0 then
-        local family = C.Readable(UnitCreatureFamily("pet"))
-        mask = family and Food.familyMasks[family] or 0
+        local family, familyID = UnitCreatureFamily("pet")
+        mask = Food.FamilyDiet(C.Readable(family), C.Readable(familyID))
         if #names == 0 then
-            for t, name in ipairs(Food.TYPES) do
+            for t, name in ipairs(FOOD_TYPE_LABELS) do
                 if Eats(mask, t) then names[#names + 1] = name end
             end
         end
@@ -133,8 +138,8 @@ function Pet:ApplyActions()
     HS:RunOutOfCombat(function()
         local food = self.food
         self.armedFood = food
-        local feed = S.Name(S.FEED_PET) or "Feed Pet"
-        local mend = S.Name(S.MEND_PET) or "Mend Pet"
+        local feed = S.Name(S.FEED_PET) or L.FEED_PET
+        local mend = S.Name(S.MEND_PET) or L.MEND_PET
         -- "*" so shift/ctrl/alt clicks and modified key bindings still match.
         for _, btn in ipairs({ self.card, self.feedButton }) do
             if btn then
@@ -162,20 +167,20 @@ end
 -- Prints the food choice (/hs feed).
 function Pet:ReportFood()
     if not UnitExists("pet") then
-        HS:Print("No pet out.")
+        HS:Print(L.NO_PET_OUT)
         return
     end
     local food, list = self:FindFood()
     if not food then
-        HS:Print("No food your pet will eat is in your bags. Diet: %s", table.concat(self:GetDiet(), ", "))
+        HS:Print(L.NO_FOOD_WITH_DIET, table.concat(self:GetDiet(), ", "))
         return
     end
-    HS:Print("Feeding |cffabd473%s|r (%d in bags, %s). Bind it under Key Bindings > AddOns, or use |cffabd473/click HunterSuiteFeedButton|r.",
-        food.name or ("item " .. food.itemID), food.count, BAND_LABEL[food.band]:lower())
+    HS:Print(L.FEEDING_SELECTED_FOOD,
+        food.name or L.ITEM_D:format(food.itemID), food.count, BAND_LABEL[food.band]:lower())
     if #list > 1 then
         local others = {}
         for i = 2, math.min(#list, 5) do others[#others + 1] = (list[i].name or list[i].itemID) .. " x" .. list[i].count end
-        HS:Print("Also edible: %s", table.concat(others, ", "))
+        HS:Print(L.ALSO_EDIBLE_S, table.concat(others, ", "))
     end
 end
 
@@ -187,7 +192,7 @@ local CARD_H = 48
 
 function Pet:Build()
     local db = self.db
-    local card = UI:Element("HunterSuitePetCard", db, "Pet", "SecureActionButtonTemplate")
+    local card = UI:Element("HunterSuitePetCard", db, L.PET, "SecureActionButtonTemplate")
     card:RegisterForClicks("AnyUp", "AnyDown")
     card:SetSize(db.width, CARD_H)
     UI:Surface(card, { radius = 6, color = "bg", border = { 1, 1, 1, 0.07 }, shadow = true })
@@ -258,7 +263,7 @@ function Pet:Build()
     fb:Hide()
     self.feedButton = fb
 
-    HS.Movers:Register(card, { label = "Pet", defaultPath = "petBar.position", module = "petBar" })
+    HS.Movers:Register(card, { label = L.PET, defaultPath = "petBar.position", module = "petBar" })
 end
 
 function Pet:Layout()
@@ -292,7 +297,7 @@ function Pet:PaintFood()
         card.foodIcon:SetTexture(133971)
         card.foodIcon:SetDesaturated(true)
         card.foodIcon:Show()
-        card.foodText:SetText("no food")
+        card.foodText:SetText(L.NO_FOOD)
         card.foodText:SetTextColor(UI:Color("danger"))
     else
         card.foodIcon:Hide()
@@ -308,7 +313,7 @@ function Pet:PaintIdentity()
     if C.IsSecret(name) or C.IsSecret(level) then
         card.name:SetText(name)
     else
-        card.name:SetText(("%s |c%s%s|r"):format(name or "Pet", UI:Hex("textMute"), level or ""))
+        card.name:SetText(("%s |c%s%s|r"):format(name or L.PET, UI:Hex("textMute"), level or ""))
     end
 end
 
@@ -481,41 +486,41 @@ end
 function Pet:ShowTooltip(owner)
     GameTooltip:SetOwner(owner, "ANCHOR_TOP", 0, 6)
     if HS.state.editMode or not UnitExists("pet") then
-        GameTooltip:AddLine("Pet card", 1, 1, 1)
-        GameTooltip:AddLine("Shows your pet's mood, health and food.", 0.75, 0.77, 0.8, true)
+        GameTooltip:AddLine(L.PET_CARD, 1, 1, 1)
+        GameTooltip:AddLine(L.SHOWS_YOUR_PET_S_MOOD_HEALTH_AND_FOOD, 0.75, 0.77, 0.8, true)
         GameTooltip:Show()
         return
     end
     local name = C.Readable(UnitName("pet"))
     local family = UnitCreatureFamily("pet")
-    GameTooltip:AddDoubleLine(name or "Pet", C.Readable(family) or "", 1, 1, 1, 0.6, 0.62, 0.66)
+    GameTooltip:AddDoubleLine(name or L.PET, C.Readable(family) or "", 1, 1, 1, 0.6, 0.62, 0.66)
     local happiness, damage = C.GetPetHappiness()
     local spec = HAPPINESS[happiness or 0]
     if spec then
         local r, g, b = UI:Color(spec.color)
-        GameTooltip:AddDoubleLine("Mood", ("%s (%d%% damage)"):format(spec.label, damage or spec.damage), 0.75, 0.77, 0.8, r, g, b)
+        GameTooltip:AddDoubleLine(L.MOOD, (L.S_D_DAMAGE):format(spec.label, damage or spec.damage), 0.75, 0.77, 0.8, r, g, b)
     end
     local loyalty = C.GetPetLoyalty()
     if loyalty then
-        GameTooltip:AddDoubleLine("Loyalty", loyalty, 0.75, 0.77, 0.8, 1, 1, 1)
+        GameTooltip:AddDoubleLine(L.LOYALTY, loyalty, 0.75, 0.77, 0.8, 1, 1, 1)
     end
     local diet = self:GetDiet()
     if #diet > 0 then
-        GameTooltip:AddDoubleLine("Diet", table.concat(diet, ", "), 0.75, 0.77, 0.8, 1, 1, 1)
+        GameTooltip:AddDoubleLine(L.DIET, table.concat(diet, ", "), 0.75, 0.77, 0.8, 1, 1, 1)
     end
     GameTooltip:AddLine(" ")
     local food = self.food
     if food then
         local bandColor = food.band == 3 and "good" or food.band == 2 and "warn" or "danger"
         local r, g, b = UI:Color(bandColor)
-        GameTooltip:AddDoubleLine("Food", ("%s x%d"):format(food.name or "?", food.count), 0.75, 0.77, 0.8, 1, 1, 1)
+        GameTooltip:AddDoubleLine(L.FOOD, ("%s x%d"):format(food.name or "?", food.count), 0.75, 0.77, 0.8, 1, 1, 1)
         GameTooltip:AddDoubleLine(" ", BAND_LABEL[food.band], 0.75, 0.77, 0.8, r, g, b)
     else
-        GameTooltip:AddLine("No food your pet will eat is in your bags.", 1, 0.45, 0.45, true)
+        GameTooltip:AddLine(L.NO_FOOD_YOUR_PET_WILL_EAT_IS_IN_YOUR_BAGS, 1, 0.45, 0.45, true)
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Left-click", "Feed Pet", 0.67, 0.83, 0.45, 0.9, 0.9, 0.9)
-    GameTooltip:AddDoubleLine("Right-click", "Mend Pet", 0.67, 0.83, 0.45, 0.9, 0.9, 0.9)
+    GameTooltip:AddDoubleLine(L.LEFT_CLICK, L.FEED_PET, 0.67, 0.83, 0.45, 0.9, 0.9, 0.9)
+    GameTooltip:AddDoubleLine(L.RIGHT_CLICK, L.MEND_PET, 0.67, 0.83, 0.45, 0.9, 0.9, 0.9)
     GameTooltip:Show()
 end
 
@@ -596,9 +601,9 @@ HS:On("EDIT_MODE", function(on)
     if not Pet.enabled then return end
     if on and not UnitExists("pet") then
         local card = Pet.card
-        card.name:SetText("Wolf |cff6b6f7860|r")
+        card.name:SetText(L.WOLF_CFF6B6F7860_R)
         card.portrait:SetTexture(132203)
-        card.mood:SetText("Happy")
+        card.mood:SetText(L.HAPPY)
         card.ring:SetVertexColor(UI:Color("good"))
         card.hp:SetRange(0, 1)
         card.hp:SetValueNow(0.82)

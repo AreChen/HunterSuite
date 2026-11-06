@@ -6,9 +6,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Tracking = HS:NewModule("tracking", { title = "Tracking Reminder" })
+local Tracking = HS:NewModule("tracking", { title = L.TRACKING_REMINDER })
 
 local trackIDs, trackNames = {}, {}
 local humanoidID = S.TRACKING.humanoids
@@ -59,7 +60,7 @@ function Tracking:Evaluate()
     if db.mode == "pvp" then
         local humanoidName = S.Name(humanoidID)
         if C.IsInPvP() and C.IsKnown(humanoidID) and not (active[humanoidID] or (humanoidName and active[humanoidName])) then
-            show, title, text = true, "Track Humanoids", "You are in a battleground"
+            show, title, text = true, humanoidName or L.TRACK_HUMANOIDS, L.YOU_ARE_IN_A_BATTLEGROUND
             icon = S.Icon(humanoidID)
         end
     elseif db.mode == "always" then
@@ -68,7 +69,7 @@ function Tracking:Evaluate()
             if trackIDs[key] or trackNames[key] then any = true break end
         end
         if not any and not IsResting() then
-            show, title, text = true, "No tracking active", "Pick a tracking from your spellbook"
+            show, title, text = true, L.NO_TRACKING_ACTIVE, L.PICK_A_TRACKING_FROM_YOUR_SPELLBOOK
             icon = S.Icon(S.TRACKING.beasts)
         end
     end
@@ -77,7 +78,7 @@ function Tracking:Evaluate()
         HS.Alerts:Set("tracking", {
             title = title, text = text, icon = icon or 132328,
             color = "info", priority = 4,
-            tooltip = "Hunters can track one creature type at a time.",
+            tooltip = L.HUNTERS_CAN_TRACK_ONE_CREATURE_TYPE_AT_A_TIME,
         })
     else
         HS.Alerts:Clear("tracking")

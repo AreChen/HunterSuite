@@ -9,9 +9,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Shot = HS:NewModule("shotTimer", { title = "Auto Shot Timer" })
+local Shot = HS:NewModule("shotTimer", { title = L.AUTO_SHOT_TIMER_2 })
 
 local RANGED = C.SwingType.Ranged
 local OVERDUE_GRACE = 0.15
@@ -33,7 +34,7 @@ Shot.state = state
 
 function Shot:Build()
     local db = self.db
-    local f = UI:Element("HunterSuiteShotTimer", db, "Auto Shot")
+    local f = UI:Element("HunterSuiteShotTimer", db, L.AUTO_SHOT)
     f:SetSize(db.width, db.height + 6)
     self.frame = f
 
@@ -85,7 +86,7 @@ function Shot:Build()
     f:SetScript("OnUpdate", function(_, elapsed) Shot:OnUpdate(elapsed) end)
     f:Hide()
 
-    HS.Movers:Register(f, { label = "Auto Shot", defaultPath = "shotTimer.position", module = "shotTimer" })
+    HS.Movers:Register(f, { label = L.AUTO_SHOT, defaultPath = "shotTimer.position", module = "shotTimer" })
 end
 
 function Shot:Layout()
@@ -176,7 +177,7 @@ function Shot:OnUpdate()
             bar:SetRange(0, 1)
             bar:SetValueNow(0)
             bar:SetFillColor(UI:Color("textMute"))
-            f.label:SetText("Auto Shot")
+            f.label:SetText(L.AUTO_SHOT)
             f.time:SetText("")
             f.aimZone:Hide(); f.aimMarker:Hide(); f.cast:Hide()
         end
@@ -199,13 +200,13 @@ function Shot:OnUpdate()
         local inAim = elapsed >= aimStart
         if inAim and state.moving then
             bar:SetFillColor(UI:Color("danger"))
-            f.label:SetText("Stop moving")
+            f.label:SetText(L.STOP_MOVING)
         elseif inAim then
             bar:SetFillColor(UI:Color("warn"))
-            f.label:SetText("Hold still")
+            f.label:SetText(L.HOLD_STILL)
         else
             bar:SetFillColor(UI:Accent())
-            f.label:SetText(db.showLabel and "Auto Shot" or "")
+            f.label:SetText(db.showLabel and L.AUTO_SHOT or "")
         end
         f.time:SetFormattedText("%.1f", math.max(0, duration - elapsed))
     else
@@ -214,13 +215,13 @@ function Shot:OnUpdate()
         bar:SetValueNow(1)
         bar:SetFillColor(UI:Color("purple"))
         if state.moving then
-            f.label:SetText("Stop to shoot")
+            f.label:SetText(L.STOP_TO_SHOOT)
         elseif state.castEnd > now then
-            f.label:SetText("Casting")
+            f.label:SetText(L.CASTING)
         elseif C.IsInSwingRange(RANGED) == false then
-            f.label:SetText("Out of range")
+            f.label:SetText(L.OUT_OF_RANGE)
         else
-            f.label:SetText("Waiting")
+            f.label:SetText(L.WAITING)
         end
         f.time:SetText("")
     end
@@ -298,10 +299,10 @@ function Shot:DrawPreview(now)
     local aimStart = duration - 0.5
     if t >= aimStart then
         bar:SetFillColor(UI:Color("warn"))
-        f.label:SetText("Hold still")
+        f.label:SetText(L.HOLD_STILL)
     else
         bar:SetFillColor(UI:Accent())
-        f.label:SetText("Auto Shot")
+        f.label:SetText(L.AUTO_SHOT)
     end
     f.time:SetFormattedText("%.1f", math.max(0, duration - t))
     SetZone(f.aimZone, bar.bar, aimStart / duration, 1)

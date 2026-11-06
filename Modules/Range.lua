@@ -6,24 +6,25 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Range = HS:NewModule("range", { title = "Range" })
+local Range = HS:NewModule("range", { title = L.RANGE })
 
 local RANGED, MELEE = C.SwingType.Ranged, C.SwingType.MainHand
 local rc = LibStub and LibStub("LibRangeCheck-3.0", true)
 
 local STATES = {
-    melee   = { label = "Melee",       color = "warn" },
-    dead    = { label = "Dead zone",   color = "purple" },
-    inrange = { label = "In range",    color = "good" },
-    far     = { label = "Too far",     color = "danger" },
+    melee   = { label = L.MELEE,       color = "warn" },
+    dead    = { label = L.DEAD_ZONE,   color = "purple" },
+    inrange = { label = L.IN_RANGE,    color = "good" },
+    far     = { label = L.TOO_FAR,     color = "danger" },
     unknown = { label = "...",         color = "textDim" },
-    none    = { label = "No target",   color = "textMute" },
+    none    = { label = L.NO_TARGET,   color = "textMute" },
 }
 
 function Range:Build()
-    local f = UI:Element("HunterSuiteRange", self.db, "Range")
+    local f = UI:Element("HunterSuiteRange", self.db, L.RANGE)
     f:SetSize(96, 22)
     UI:Surface(f, { radius = 6, color = "bg", border = { 1, 1, 1, 0.08 }, shadow = true })
     f.dot = f:CreateTexture(nil, "ARTWORK")
@@ -37,7 +38,7 @@ function Range:Build()
     f:Hide()
     self.frame = f
     f:SetScript("OnUpdate", function(_, elapsed) Range:OnUpdate(elapsed) end)
-    HS.Movers:Register(f, { label = "Range", defaultPath = "range.position", module = "range",
+    HS.Movers:Register(f, { label = L.RANGE, defaultPath = "range.position", module = "range",
         hidden = function() return Range.docked end })
 end
 
@@ -125,9 +126,9 @@ function Range:Paint(key, minR, maxR)
     local text = spec.label
     if db.showYards and (key == "inrange" or key == "far" or key == "unknown") and minR then
         if maxR then
-            text = ("%d-%d yd"):format(minR, maxR)
+            text = (L.D_D_YD):format(minR, maxR)
         else
-            text = ("%d+ yd"):format(minR)
+            text = (L.D_YD):format(minR)
         end
     end
     f.text:SetText(text)

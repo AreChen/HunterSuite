@@ -6,6 +6,7 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, O = HS.UI, HS.Compat, HS.Options
 
 local Config = {}
@@ -362,7 +363,7 @@ local function AccentPicker(parent, item, onChange)
             plus:SetPoint("CENTER")
             plus:SetVertexColor(0.9, 0.9, 0.9)
             s:SetScript("OnClick", function() Config:PickColor(onChange) end)
-            s.tooltip = "Custom colour"
+            s.tooltip = L.CUSTOM_COLOUR
         else
             dot:SetVertexColor(color.r, color.g, color.b)
             s:SetScript("OnClick", function() onChange({ r = color.r, g = color.g, b = color.b }) end)
@@ -596,15 +597,15 @@ local function BuildHome(content, width)
     version:SetText("v" .. HS.version)
     local client = UI:Text(hero, { size = 12, color = "textDim" })
     client:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -6)
-    client:SetText(("%s  -  build %s  -  interface %d"):format(HS.clientName, HS.build or "?", HS.interface))
+    client:SetText((L.S_BUILD_S_INTERFACE_D):format(HS.clientName, HS.build or "?", HS.interface))
     local hint = UI:Text(hero, { size = 11, color = "textMute" })
     hint:SetPoint("TOPLEFT", client, "BOTTOMLEFT", 0, -6)
-    hint:SetText("/hs opens this window  -  /hs edit moves frames")
+    hint:SetText(L.HS_OPENS_THIS_WINDOW_HS_EDIT_MOVES_FRAMES)
 
-    local edit = UI:Button(hero, "Edit layout", "primary", 120, 30)
+    local edit = UI:Button(hero, L.EDIT_LAYOUT, "primary", 120, 30)
     edit:SetPoint("TOPRIGHT", -20, -24)
     edit:SetScript("OnClick", function() HS:HideConfig(); HS.Movers:Start() end)
-    local test = UI:Button(hero, "Test alerts", "secondary", 120, 30)
+    local test = UI:Button(hero, L.TEST_ALERTS, "secondary", 120, 30)
     test:SetPoint("TOP", edit, "BOTTOM", 0, -8)
     test:SetScript("OnClick", function() HS.Alerts:Test() end)
     content.heroAccent = function()
@@ -618,11 +619,11 @@ local function BuildHome(content, width)
 
     -- Live status
     local tileW = (width - 24) / 3
-    local pet = StatusTile(content, tileW, "PET")
+    local pet = StatusTile(content, tileW, L.PET_2)
     pet:SetPoint("TOPLEFT", 0, -y)
-    local ammo = StatusTile(content, tileW, "AMMO")
+    local ammo = StatusTile(content, tileW, L.AMMO_2)
     ammo:SetPoint("LEFT", pet, "RIGHT", 12, 0)
-    local aspect = StatusTile(content, tileW, "ASPECT")
+    local aspect = StatusTile(content, tileW, L.ASPECT)
     aspect:SetPoint("LEFT", ammo, "RIGHT", 12, 0)
     y = y + 62 + 22
 
@@ -634,17 +635,17 @@ local function BuildHome(content, width)
             local spec = petMod.HAPPINESS[happiness or 0]
             local petName = UnitName("pet")
             if spec and not C.IsSecret(petName) then
-                pet.value:SetText(("%s  |c%s%s|r"):format(petName or "Pet", UI:Hex(spec.color), spec.label))
+                pet.value:SetText(("%s  |c%s%s|r"):format(petName or L.PET, UI:Hex(spec.color), spec.label))
             else
                 pet.value:SetText(petName)
             end
         else
             pet.iconFrame.icon:SetTexture(132161)
-            pet.value:SetText("|cff6b6f78No pet|r")
+            pet.value:SetText("|cff6b6f78" .. L.NO_PET .. "|r")
         end
         local count = C.Readable(GetInventoryItemCount("player", INVSLOT_AMMO or 0)) or 0
         ammo.iconFrame.icon:SetTexture(GetInventoryItemTexture("player", INVSLOT_AMMO or 0) or 132382)
-        ammo.value:SetText(count > 0 and (BreakUpLargeNumbers and BreakUpLargeNumbers(count) or count) or "|cff6b6f78None equipped|r")
+        ammo.value:SetText(count > 0 and (BreakUpLargeNumbers and BreakUpLargeNumbers(count) or count) or "|cff6b6f78" .. L.NONE_EQUIPPED .. "|r")
         local aspMod = HS:GetModule("aspects")
         local cur = aspMod and aspMod.GetCurrent and aspMod:GetCurrent()
         if cur then
@@ -652,14 +653,14 @@ local function BuildHome(content, width)
             aspect.value:SetText(HS.Spells.Name(cur.ids) or cur.key)
         else
             aspect.iconFrame.icon:SetTexture(136076)
-            aspect.value:SetText("|cff6b6f78None|r")
+            aspect.value:SetText("|cff6b6f78" .. L.NONE .. "|r")
         end
     end
 
     -- Modules grid
     local header = UI:Text(content, { size = 13, color = "textDim" })
     header:SetPoint("TOPLEFT", 0, -y)
-    header:SetText("MODULES")
+    header:SetText(L.MODULES)
     y = y + 22
 
     local colW = (width - 12) / 2
@@ -788,7 +789,7 @@ local function BuildWindow()
     title:SetText("HunterSuite")
     local ver = UI:Text(side, { size = 10, color = "textMute" })
     ver:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
-    ver:SetText("v" .. HS.version .. "  -  " .. (HS.IS_FOREVER and "Forever" or HS.clientName))
+    ver:SetText("v" .. HS.version .. "  -  " .. HS.clientName)
 
     w.nav = {}
     local navY = 76
@@ -831,7 +832,7 @@ local function BuildWindow()
         w.nav[page.key] = b
     end
 
-    local editBtn = UI:Button(side, "Edit layout", "primary", SIDEBAR - 36, 32)
+    local editBtn = UI:Button(side, L.EDIT_LAYOUT, "primary", SIDEBAR - 36, 32)
     editBtn:SetPoint("BOTTOM", 0, 18)
     editBtn:SetScript("OnClick", function() HS:HideConfig(); HS.Movers:Start() end)
     w.editBtn = editBtn
@@ -847,7 +848,7 @@ local function BuildWindow()
     dot:SetVertexColor(UI:Color(HS.IS_FOREVER and "good" or "info"))
     local badgeText = UI:Text(badge, { size = 11, color = "textDim" })
     badgeText:SetPoint("LEFT", dot, "RIGHT", 8, 0)
-    badgeText:SetText(HS.clientName .. " detected")
+    badgeText:SetText(L.S_DETECTED:format(HS.clientName))
 
     -- Header
     local main = CreateFrame("Frame", nil, w)
@@ -1002,41 +1003,41 @@ function HS:ShowDiagnostics()
     local lines = {}
     local function add(fmt, ...) lines[#lines + 1] = select("#", ...) > 0 and fmt:format(...) or fmt end
     add("HunterSuite %s", HS.version)
-    add("Client: %s  build %s  interface %d  project %s", HS.clientName, tostring(HS.build), HS.interface, tostring(WOW_PROJECT_ID))
-    add("Locale: %s   Class hunter: %s", GetLocale(), tostring(HS.isHunter))
-    add("Swing API: %s   Auras restricted now: %s", tostring(C.HasSwingAPI), tostring(C.AurasRestricted()))
+    add(L.DIAG_CLIENT, HS.clientName, tostring(HS.build), HS.interface, tostring(WOW_PROJECT_ID))
+    add(L.DIAG_LOCALE, GetLocale(), tostring(HS.isHunter))
+    add(L.DIAG_SWING_AURAS, tostring(C.HasSwingAPI), tostring(C.AurasRestricted()))
     add("")
-    add("API availability:")
+    add(L.DIAG_API_AVAILABILITY)
     for _, entry in ipairs(C.Inventory()) do
-        add("  %-40s %s", entry[1], entry[2] and "yes" or "-")
+        add("  %-40s %s", entry[1], entry[2] and L.YES or "-")
     end
     add("")
-    add("Modules:")
+    add(L.DIAG_MODULES)
     for _, mod in ipairs(HS.moduleOrder) do
         local ok, supported = pcall(mod.IsSupported, mod)
-        add("  %-12s enabled=%s running=%s supported=%s", mod.key, tostring(HS.db[mod.dbKey].enabled), tostring(mod.enabled), tostring(ok and supported))
+        add(L.DIAG_MODULE_STATUS, mod.key, tostring(HS.db[mod.dbKey].enabled), tostring(mod.enabled), tostring(ok and supported))
     end
     add("")
     if UnitExists("pet") then
         local h, d, l = C.GetPetHappiness()
-        add("Pet: %s  family=%s  happiness=%s dmg=%s loyaltyRate=%s", tostring(C.Readable(UnitName("pet"))), tostring(C.Readable(UnitCreatureFamily("pet"))), tostring(h), tostring(d), tostring(l))
-        add("Diet: %s", table.concat(C.GetPetFoodTypes(), ", "))
+        add(L.DIAG_PET, tostring(C.Readable(UnitName("pet"))), tostring(C.Readable(UnitCreatureFamily("pet"))), tostring(h), tostring(d), tostring(l))
+        add(L.DIAG_DIET, table.concat(C.GetPetFoodTypes(), ", "))
         local petMod = HS:GetModule("petBar")
         if petMod.initialized then
             local food, list = petMod:FindFood()
-            add("Food choice: %s (%d candidates)", food and (tostring(food.name) .. " #" .. food.itemID) or "none", #list)
+            add(L.DIAG_FOOD_CHOICE, food and (tostring(food.name) .. " #" .. food.itemID) or L.NONE, #list)
         end
     else
-        add("Pet: none")
+        add(L.DIAG_PET_NONE)
     end
     local fb = _G.HunterSuiteFeedButton
     if fb then
-        add("Feed button: type=%s spell=%s bag=%s slot=%s keyDown=%s", tostring(fb:GetAttribute("*type1")), tostring(fb:GetAttribute("*spell1")),
+        add(L.DIAG_FEED_BUTTON, tostring(fb:GetAttribute("*type1")), tostring(fb:GetAttribute("*spell1")),
             tostring(fb:GetAttribute("*target-bag1")), tostring(fb:GetAttribute("*target-slot1")), tostring(fb:GetAttribute("useOnKeyDown")))
     else
-        add("Feed button: missing (pet card module off?)")
+        add(L.DIAG_FEED_BUTTON_MISSING)
     end
-    add("Ammo slot count: %s   uses ammo: %s", tostring(C.Readable(GetInventoryItemCount("player", INVSLOT_AMMO or 0))), tostring(UnitUsesAmmo and C.Readable(UnitUsesAmmo("player"))))
+    add(L.DIAG_AMMO, tostring(C.Readable(GetInventoryItemCount("player", INVSLOT_AMMO or 0))), tostring(UnitUsesAmmo and C.Readable(UnitUsesAmmo("player"))))
     local text = table.concat(lines, "\n")
 
     if not diag then
@@ -1053,10 +1054,10 @@ function HS:ShowDiagnostics()
         tinsert(UISpecialFrames, "HunterSuiteDiagnostics")
         local t = UI:Text(diag, { size = 15 })
         t:SetPoint("TOPLEFT", 18, -16)
-        t:SetText("Diagnostics")
+        t:SetText(L.DIAGNOSTICS)
         local hint = UI:Text(diag, { size = 11, color = "textDim" })
         hint:SetPoint("LEFT", t, "RIGHT", 10, -1)
-        hint:SetText("Ctrl+A, Ctrl+C to copy")
+        hint:SetText(L.CTRL_A_CTRL_C_TO_COPY)
         local close = UI:IconButton(diag, UI.tex.close, 26)
         close:SetPoint("TOPRIGHT", -10, -10)
         close:SetScript("OnClick", function() diag:Hide() end)
@@ -1094,11 +1095,11 @@ HS:On("CORE_READY", function()
     t:SetText("|cffabd473Hunter|rSuite")
     local d = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     d:SetPoint("TOPLEFT", t, "BOTTOMLEFT", 0, -8)
-    d:SetText("All settings live in HunterSuite's own window.")
+    d:SetText(L.ALL_SETTINGS_LIVE_IN_HUNTERSUITE_S_OWN_WINDOW)
     local b = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     b:SetSize(200, 30)
     b:SetPoint("TOPLEFT", logo, "BOTTOMLEFT", 0, -20)
-    b:SetText("Open HunterSuite")
+    b:SetText(L.OPEN_HUNTERSUITE)
     b:SetScript("OnClick", function()
         if SettingsPanel and SettingsPanel:IsShown() then HideUIPanel(SettingsPanel) end
         if InterfaceOptionsFrame and InterfaceOptionsFrame:IsShown() then HideUIPanel(InterfaceOptionsFrame) end

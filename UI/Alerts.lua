@@ -5,6 +5,7 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI = HS.UI
 
 local A = { active = {}, pool = {}, order = 0, dismissed = {} }
@@ -16,9 +17,9 @@ local anchor
 
 local function GetAnchor()
     if anchor then return anchor end
-    anchor = UI:Element("HunterSuiteAlertAnchor", HS.db.alerts, "Alerts")
+    anchor = UI:Element("HunterSuiteAlertAnchor", HS.db.alerts, L.ALERTS)
     anchor:SetSize(WIDTH, HEIGHT)
-    HS.Movers:Register(anchor, { label = "Alerts", defaultPath = "alerts.position" })
+    HS.Movers:Register(anchor, { label = L.ALERTS, defaultPath = "alerts.position" })
     return anchor
 end
 
@@ -80,7 +81,7 @@ local function CreateCard()
                 GameTooltip:AddLine(line, 0.75, 0.77, 0.8, true)
             end
         end
-        GameTooltip:AddLine(spec.dismissHint or "Right-click to dismiss", 0.5, 0.52, 0.56)
+        GameTooltip:AddLine(spec.dismissHint or L.RIGHT_CLICK_TO_DISMISS, 0.5, 0.52, 0.56)
         GameTooltip:Show()
     end)
     c:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -190,9 +191,9 @@ end
 
 function A:Test()
     self.dismissed.test1, self.dismissed.test2, self.dismissed.test3 = nil, nil, nil
-    self:Set("test1", { title = "No aspect active", text = "Right-click to dismiss", icon = 136076, color = "warn", priority = 5, timeout = 6 })
-    self:Set("test2", { title = "Aspect of the Cheetah in combat", text = "You will be dazed when hit", icon = 132242, color = "danger", glow = true, priority = 9, timeout = 6 })
-    self:Set("test3", { title = "Growl is on", text = "Turn off taunt in groups", icon = 132270, color = "info", priority = 3, timeout = 6 })
+    self:Set("test1", { title = L.NO_ASPECT_ACTIVE, text = L.RIGHT_CLICK_TO_DISMISS, icon = 136076, color = "warn", priority = 5, timeout = 6 })
+    self:Set("test2", { title = L.ASPECT_OF_THE_CHEETAH_IN_COMBAT, text = L.YOU_WILL_BE_DAZED_WHEN_HIT, icon = 132242, color = "danger", glow = true, priority = 9, timeout = 6 })
+    self:Set("test3", { title = L.GROWL_IS_ON, text = L.TURN_OFF_TAUNT_IN_GROUPS, icon = 132270, color = "info", priority = 3, timeout = 6 })
 end
 
 ---------------------------------------------------------------------------
@@ -207,7 +208,7 @@ HS:On("EDIT_MODE", function(on)
     GetAnchor()
     if on then
         if not next(A.active) then
-            A:Set("__preview", { title = "Alerts appear here", text = "Reminders stack from this point", icon = 132329, color = "accent", priority = 0 })
+            A:Set("__preview", { title = L.ALERTS_APPEAR_HERE, text = L.REMINDERS_STACK_FROM_THIS_POINT, icon = 132329, color = "accent", priority = 0 })
         end
     else
         A:Clear("__preview")

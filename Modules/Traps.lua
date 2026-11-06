@@ -5,9 +5,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Traps = HS:NewModule("traps", { title = "Trap Timers" })
+local Traps = HS:NewModule("traps", { title = L.TRAP_TIMERS_2 })
 
 local ROW_H, ROW_GAP, MAX_ROWS = 18, 4, 4
 local placed = {}          -- key -> { name, icon, placedAt }
@@ -21,7 +22,7 @@ function Traps:IsSupported()
 end
 
 function Traps:Build()
-    local f = UI:Element("HunterSuiteTraps", self.db, "Traps")
+    local f = UI:Element("HunterSuiteTraps", self.db, L.TRAPS)
     f:SetSize(200, ROW_H)
     f.rows = {}
     for i = 1, MAX_ROWS do
@@ -44,7 +45,7 @@ function Traps:Build()
     f:SetScript("OnUpdate", function() Traps:Draw() end)
     f:Hide()
     self.frame = f
-    HS.Movers:Register(f, { label = "Traps", defaultPath = "traps.position", module = "traps" })
+    HS.Movers:Register(f, { label = L.TRAPS, defaultPath = "traps.position", module = "traps" })
 end
 
 local function SortedTraps()
@@ -60,8 +61,8 @@ function Traps:Draw()
     local list
     if HS.state.editMode then
         list = {
-            { name = S.Name(S.TRAPS[1].place) or "Freezing Trap", icon = S.Icon(S.TRAPS[1].place) or 135834, placedAt = now - 34 },
-            { name = S.Name(S.TRAPS[3].place) or "Immolation Trap", icon = S.Icon(S.TRAPS[3].place) or 135813, placedAt = now - 1 },
+            { name = S.Name(S.TRAPS[1].place) or L.FREEZING_TRAP, icon = S.Icon(S.TRAPS[1].place) or 135834, placedAt = now - 34 },
+            { name = S.Name(S.TRAPS[3].place) or L.IMMOLATION_TRAP, icon = S.Icon(S.TRAPS[3].place) or 135813, placedAt = now - 1 },
         }
     else
         for key, t in pairs(placed) do
@@ -84,7 +85,7 @@ function Traps:Draw()
                 row.bar:SetRange(0, db.armTime)
                 row.bar:SetValueNow(age)
                 row.bar:SetFillColor(UI:Color("warn"))
-                row.time:SetText("arming")
+                row.time:SetText(L.ARMING)
             else
                 local left = db.duration - age
                 row.bar:SetRange(0, db.duration)

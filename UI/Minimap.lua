@@ -3,6 +3,7 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C = HS.UI, HS.Compat
 
 local button
@@ -17,18 +18,18 @@ local function Tooltip(owner)
             local name = UnitName("pet")
             if spec and not C.IsSecret(name) then
                 local r, g, b = UI:Color(spec.color)
-                GameTooltip:AddDoubleLine(name or "Pet", spec.label, 0.85, 0.86, 0.88, r, g, b)
+                GameTooltip:AddDoubleLine(name or L.PET, spec.label, 0.85, 0.86, 0.88, r, g, b)
             end
         end
         local count = C.Readable(GetInventoryItemCount("player", INVSLOT_AMMO or 0))
         if count and count > 0 then
-            GameTooltip:AddDoubleLine("Ammo", BreakUpLargeNumbers and BreakUpLargeNumbers(count) or count, 0.85, 0.86, 0.88, 1, 1, 1)
+            GameTooltip:AddDoubleLine(L.AMMO, BreakUpLargeNumbers and BreakUpLargeNumbers(count) or count, 0.85, 0.86, 0.88, 1, 1, 1)
         end
     end
     GameTooltip:AddLine(" ")
-    GameTooltip:AddDoubleLine("Left-click", "Settings", 0.67, 0.83, 0.45, 0.85, 0.86, 0.88)
-    GameTooltip:AddDoubleLine("Right-click", "Edit layout", 0.67, 0.83, 0.45, 0.85, 0.86, 0.88)
-    GameTooltip:AddDoubleLine("Drag", "Move this button", 0.67, 0.83, 0.45, 0.85, 0.86, 0.88)
+    GameTooltip:AddDoubleLine(L.LEFT_CLICK, L.SETTINGS, 0.67, 0.83, 0.45, 0.85, 0.86, 0.88)
+    GameTooltip:AddDoubleLine(L.RIGHT_CLICK, L.EDIT_LAYOUT, 0.67, 0.83, 0.45, 0.85, 0.86, 0.88)
+    GameTooltip:AddDoubleLine(L.DRAG, L.MOVE_THIS_BUTTON, 0.67, 0.83, 0.45, 0.85, 0.86, 0.88)
     GameTooltip:Show()
 end
 
@@ -36,7 +37,7 @@ local function OnClick(mouseButton)
     if mouseButton == "RightButton" then
         if HS.isHunter then HS.Movers:Toggle() end
     else
-        if HS.isHunter then HS:ToggleConfig() else HS:Print("HunterSuite only runs on Hunters.") end
+        if HS.isHunter then HS:ToggleConfig() else HS:Print(L.HUNTERSUITE_ONLY_RUNS_ON_HUNTERS) end
     end
 end
 

@@ -7,9 +7,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Stings = HS:NewModule("stings", { title = "Sting Timers" })
+local Stings = HS:NewModule("stings", { title = L.STING_TIMERS_2 })
 
 local tracked = {}        -- spellID -> { key, duration, ids }
 local byName = {}         -- localized name -> entry

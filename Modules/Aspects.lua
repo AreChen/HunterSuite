@@ -7,9 +7,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Aspects = HS:NewModule("aspects", { title = "Aspect Reminder" })
+local Aspects = HS:NewModule("aspects", { title = L.ASPECT_REMINDER })
 
 local idToAspect, nameToAspect = {}, {}
 local current            -- aspect entry or nil
@@ -57,14 +58,14 @@ function Aspects:Evaluate()
 
     -- Cheetah / Pack in combat.
     if current and current.movement and inCombat and db.warnMovementInCombat and not Suppressed() then
-        local name = S.Name(current.ids) or "Movement aspect"
+        local name = S.Name(current.ids) or L.MOVEMENT_ASPECT
         HS.Alerts:Set("aspect.movement", {
-            title = name .. " in combat",
-            text = "You will be dazed when hit",
+            title = L.S_IN_COMBAT:format(name),
+            text = L.YOU_WILL_BE_DAZED_WHEN_HIT,
             icon = S.Icon(current.ids),
             color = "danger", glow = true, priority = 9,
             sound = SOUNDKIT and SOUNDKIT.RAID_WARNING,
-            tooltip = "Switch to Aspect of the Hawk or Monkey.",
+            tooltip = L.SWITCH_TO_ASPECT_OF_THE_HAWK_OR_MONKEY,
         })
     else
         HS.Alerts:Clear("aspect.movement")
@@ -78,12 +79,12 @@ function Aspects:Evaluate()
     if want then
         local hawk = S.ASPECTS[1]
         HS.Alerts:Set("aspect.none", {
-            title = "No aspect active",
-            text = inCombat and "You are fighting without an aspect" or "Right-click to snooze",
+            title = L.NO_ASPECT_ACTIVE,
+            text = inCombat and L.YOU_ARE_FIGHTING_WITHOUT_AN_ASPECT or L.RIGHT_CLICK_TO_SNOOZE,
             icon = S.Icon(hawk.ids) or 136076,
             color = inCombat and "danger" or "warn", priority = 6,
-            tooltip = "Cast an aspect, e.g. " .. (S.Name(hawk.ids) or "Aspect of the Hawk") .. ".",
-            dismissHint = ("Right-click to snooze for %ds"):format(db.snooze or 60),
+            tooltip = L.CAST_AN_ASPECT_E_G_S:format(S.Name(hawk.ids) or L.ASPECT_OF_THE_HAWK),
+            dismissHint = (L.RIGHT_CLICK_TO_SNOOZE_FOR_DS):format(db.snooze or 60),
             onDismiss = function() Aspects:Snooze() end,
         })
     else

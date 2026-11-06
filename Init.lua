@@ -5,6 +5,7 @@
 ]]
 
 local ADDON, HS = ...
+local L = HS.L
 _G.HunterSuite = HS
 
 HS.name = ADDON
@@ -25,10 +26,10 @@ HS.IS_FOREVER = (HS.interface >= 16000 and HS.interface < 20000)
 HS.IS_ERA = HS.interface < 16000
 HS.IS_TBC = HS.interface >= 20000 and HS.interface < 30000
 HS.IS_CLASSIC_CONTENT = HS.interface < 30000
-HS.clientName = HS.IS_FOREVER and "WoW Forever"
-    or HS.IS_TBC and "Burning Crusade Classic"
-    or HS.IS_ERA and "Classic Era"
-    or "Unsupported client"
+HS.clientName = HS.IS_FOREVER and L.WOW_FOREVER
+    or HS.IS_TBC and L.BURNING_CRUSADE_CLASSIC
+    or HS.IS_ERA and L.CLASSIC_ERA
+    or L.UNSUPPORTED_CLIENT
 
 ---------------------------------------------------------------------------
 -- Printing
@@ -480,10 +481,10 @@ function HS:PLAYER_LOGIN()
     self:Fire("MODULES_READY")
 
     if self.migratedFrom3 then
-        self:Print("Updated to |cffabd473%s|r. Your module choices were kept; frame positions were reset for the new layout. Type |cffabd473/hs|r to open settings.", self.version)
+        self:Print(L.UPDATE_LAYOUT_NOTICE, self.version)
         self.db.welcomed4 = true
     elseif not self.db.welcomed4 then
-        self:Print("Welcome! Type |cffabd473/hs|r for settings or |cffabd473/hs edit|r to move frames.")
+        self:Print(L.WELCOME_MESSAGE)
         self.db.welcomed4 = true
     end
 end
@@ -529,20 +530,20 @@ core:On("PLAYER_REGEN_DISABLED")
 ---------------------------------------------------------------------------
 
 HS.slashHelp = {
-    { "", "open settings" },
-    { "edit", "move and resize frames (edit mode)" },
-    { "lock", "leave edit mode" },
-    { "feed", "show which food the pet card will use" },
-    { "diag", "client and API report (copyable)" },
-    { "reset", "reset all settings" },
+    { "", L.OPEN_SETTINGS },
+    { "edit", L.MOVE_AND_RESIZE_FRAMES_EDIT_MODE },
+    { "lock", L.LEAVE_EDIT_MODE },
+    { "feed", L.SHOW_WHICH_FOOD_THE_PET_CARD_WILL_USE },
+    { "diag", L.CLIENT_AND_API_REPORT_COPYABLE },
+    { "reset", L.RESET_ALL_SETTINGS },
 }
 
 local function PrintHelp()
-    HS:Print("Commands:")
+    HS:Print(L.COMMANDS)
     for _, entry in ipairs(HS.slashHelp) do
         print(("   |cffabd473/hs %s|r |cff9aa0a6%s|r"):format(entry[1], entry[2]))
     end
-    print("   |cff9aa0a6Macro:|r |cffabd473/click HunterSuiteFeedButton|r |cff9aa0a6feeds your pet the selected food|r")
+    print(L.FEED_MACRO_HELP)
 end
 
 SLASH_HUNTERSUITE1 = "/hs"
@@ -556,7 +557,7 @@ SlashCmdList.HUNTERSUITE = function(msg)
     if cmd == "help" or cmd == "?" then
         PrintHelp()
     elseif not HS.isHunter and cmd ~= "diag" then
-        HS:Print("HunterSuite only runs on Hunters. |cff9aa0a6/hs diag|r still works.")
+        HS:Print(L.HUNTER_ONLY_DIAG_NOTICE)
     elseif cmd == "" or cmd == "config" or cmd == "options" or cmd == "settings" then
         HS:ToggleConfig()
     elseif cmd == "edit" or cmd == "move" or cmd == "unlock" then
@@ -568,7 +569,7 @@ SlashCmdList.HUNTERSUITE = function(msg)
         if pet and pet.enabled then
             pet:ReportFood()
         else
-            HS:Print("The pet card is turned off (/hs > Pet).")
+            HS:Print(L.THE_PET_CARD_IS_TURNED_OFF_HS_PET)
         end
     elseif cmd == "diag" or cmd == "debug" then
         HS:ShowDiagnostics()
@@ -582,9 +583,9 @@ SlashCmdList.HUNTERSUITE = function(msg)
 end
 
 StaticPopupDialogs.HUNTERSUITE_RESET = {
-    text = "Reset all HunterSuite settings and positions?",
-    button1 = YES or "Yes",
-    button2 = NO or "No",
+    text = L.RESET_ALL_HUNTERSUITE_SETTINGS_AND_POSITIONS,
+    button1 = YES or L.YES,
+    button2 = NO or L.NO,
     OnAccept = function()
         HS:ResetProfile()
         ReloadUI()
@@ -597,5 +598,5 @@ StaticPopupDialogs.HUNTERSUITE_RESET = {
 
 -- Keybinding labels (Bindings.xml).
 BINDING_HEADER_HUNTERSUITE = "HunterSuite"
-_G["BINDING_NAME_CLICK HunterSuiteFeedButton:LeftButton"] = "Feed Pet (best food)"
-_G["BINDING_NAME_CLICK HunterSuiteFeedButton:RightButton"] = "Mend Pet"
+_G["BINDING_NAME_CLICK HunterSuiteFeedButton:LeftButton"] = L.FEED_PET_BEST_FOOD
+_G["BINDING_NAME_CLICK HunterSuiteFeedButton:RightButton"] = L.MEND_PET

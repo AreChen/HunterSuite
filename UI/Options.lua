@@ -6,211 +6,212 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI = HS.UI
 
 local O = {}
 HS.Options = O
 
 local function pct(v) return ("%d%%"):format(math.floor(v * 100 + 0.5)) end
-local function secs(v) return ("%.1fs"):format(v) end
+local function secs(v) return L.SECONDS_DECIMAL:format(v) end
 local function plain(v) return tostring(math.floor(v + 0.5)) end
 local function scale(v) return ("%.2fx"):format(v) end
 
 O.pages = {
     {
-        key = "home", title = "Overview", icon = UI.tex.logo, home = true,
-        desc = "Everything a Hunter needs, built for WoW Forever.",
+        key = "home", title = L.OVERVIEW, icon = UI.tex.logo, home = true,
+        desc = L.ABOUT_FOREVER,
     },
     {
-        key = "pet", title = "Pet", icon = 132161,
-        desc = "Your pet's mood, health and food in one card. Left-click feeds, right-click mends.",
+        key = "pet", title = L.PET, icon = 132161,
+        desc = L.PET_CARD_DESCRIPTION,
         sections = {
             {
-                title = "Pet card", module = "petBar", icon = 132165,
+                title = L.PET_CARD, module = "petBar", icon = 132165,
                 items = {
-                    { type = "select", path = "petBar.visibility", label = "Show the card",
-                      values = { { "smart", "When your pet needs you" }, { "combat", "In combat" }, { "always", "Always" } },
-                      desc = "Smart shows it in combat and whenever your pet is not happy or is hurt." },
-                    { type = "segmented", path = "petBar.style", label = "Style",
-                      values = { { "card", "Card" }, { "compact", "Compact" } } },
-                    { type = "slider", path = "petBar.width", label = "Width", min = 180, max = 340, step = 2, format = plain },
-                    { type = "select", path = "petBar.foodMode", label = "Food to use",
+                    { type = "select", path = "petBar.visibility", label = L.SHOW_THE_CARD,
+                      values = { { "smart", L.WHEN_YOUR_PET_NEEDS_YOU }, { "combat", L.IN_COMBAT }, { "always", L.ALWAYS } },
+                      desc = L.PET_CARD_SMART_DESCRIPTION },
+                    { type = "segmented", path = "petBar.style", label = L.STYLE,
+                      values = { { "card", L.CARD }, { "compact", L.COMPACT } } },
+                    { type = "slider", path = "petBar.width", label = L.WIDTH, min = 180, max = 340, step = 2, format = plain },
+                    { type = "select", path = "petBar.foodMode", label = L.FOOD_TO_USE,
                       values = {
-                          { "smart", "Smart: full happiness, cheapest first" },
-                          { "lowest", "Lowest level" }, { "highest", "Highest level" },
-                          { "leastStacked", "Smallest stack first" }, { "mostStacked", "Biggest stack first" },
+                          { "smart", L.SMART_FULL_HAPPINESS_CHEAPEST_FIRST },
+                          { "lowest", L.LOWEST_LEVEL }, { "highest", L.HIGHEST_LEVEL },
+                          { "leastStacked", L.SMALLEST_STACK_FIRST }, { "mostStacked", L.BIGGEST_STACK_FIRST },
                       },
-                      desc = "The game tells HunterSuite what your pet can eat; food too far below your pet's level is skipped." },
-                    { type = "slider", path = "petBar.mendThreshold", label = "Mend Pet warning below", min = 0.1, max = 0.9, step = 0.05, format = pct },
-                    { type = "toggle", path = "petBar.showPortrait", label = "Portrait" },
-                    { type = "toggle", path = "petBar.showHealthText", label = "Health text" },
-                    { type = "toggle", path = "petBar.soundOnUnhappy", label = "Sound when your pet turns unhappy" },
-                    { type = "info", text = "Key Bindings > AddOns > HunterSuite has Feed Pet and Mend Pet. Macro: /click HunterSuiteFeedButton" },
+                      desc = L.PET_FOOD_SELECTION_DESCRIPTION },
+                    { type = "slider", path = "petBar.mendThreshold", label = L.MEND_PET_WARNING_BELOW, min = 0.1, max = 0.9, step = 0.05, format = pct },
+                    { type = "toggle", path = "petBar.showPortrait", label = L.PORTRAIT },
+                    { type = "toggle", path = "petBar.showHealthText", label = L.HEALTH_TEXT },
+                    { type = "toggle", path = "petBar.soundOnUnhappy", label = L.SOUND_WHEN_YOUR_PET_TURNS_UNHAPPY },
+                    { type = "info", text = L.PET_BINDINGS_HINT },
                 },
             },
             {
-                title = "Missing or dead pet", module = "petAlert", icon = 132163,
+                title = L.MISSING_OR_DEAD_PET, module = "petAlert", icon = 132163,
                 items = {
-                    { type = "toggle", path = "petAlert.bgOnly", label = "Only in battlegrounds" },
-                    { type = "info", text = "Left-click calls your pet, right-click revives it. Hidden while mounted or on a flight path." },
-                },
-            },
-        },
-    },
-    {
-        key = "shot", title = "Auto Shot", icon = 132369,
-        desc = "Swing timer driven by Forever's native swing events, with the aim window you must stand still for.",
-        sections = {
-            {
-                title = "Auto Shot timer", module = "shotTimer", icon = 132369,
-                items = {
-                    { type = "slider", path = "shotTimer.width", label = "Width", min = 140, max = 420, step = 2, format = plain },
-                    { type = "slider", path = "shotTimer.height", label = "Height", min = 8, max = 28, step = 1, format = plain },
-                    { type = "slider", path = "shotTimer.aimTime", label = "Aim window", min = 0.3, max = 0.8, step = 0.05, format = secs,
-                      desc = "Auto Shot has a 0.5s aim before each shot. Moving inside it delays the shot." },
-                    { type = "toggle", path = "shotTimer.latency", label = "Add latency to the aim window" },
-                    { type = "toggle", path = "shotTimer.showAimMarker", label = "Show the aim window" },
-                    { type = "toggle", path = "shotTimer.showCastOverlay", label = "Project casts onto the bar",
-                      desc = "Turns red when a cast runs into the aim window and will clip your shot." },
-                    { type = "toggle", path = "shotTimer.showGCD", label = "Global cooldown line" },
-                    { type = "toggle", path = "shotTimer.showDelay", label = "Show how late the last shot was" },
-                    { type = "toggle", path = "shotTimer.flashOnShot", label = "Flash when a shot fires" },
-                    { type = "toggle", path = "shotTimer.hideIdle", label = "Hide when not shooting" },
-                    { type = "slider", path = "shotTimer.oocAlpha", label = "Opacity out of combat", min = 0, max = 1, step = 0.05, format = pct },
-                },
-            },
-            {
-                title = "Range and dead zone", module = "range", icon = 132222,
-                items = {
-                    { type = "segmented", path = "range.style", label = "Style",
-                      values = { { "pill", "Pill" }, { "text", "Text" }, { "dot", "Dot" } } },
-                    { type = "toggle", path = "range.attach", label = "Dock next to the Auto Shot bar" },
-                    { type = "toggle", path = "range.showYards", label = "Show yards" },
-                    { type = "toggle", path = "range.showNoTarget", label = "Show without a target" },
+                    { type = "toggle", path = "petAlert.bgOnly", label = L.ONLY_IN_BATTLEGROUNDS },
+                    { type = "info", text = L.PET_MISSING_DESCRIPTION },
                 },
             },
         },
     },
     {
-        key = "reminders", title = "Reminders", icon = 136076,
-        desc = "Alerts stack in one place. Move them with Edit Mode; right-click an alert to dismiss it.",
+        key = "shot", title = L.AUTO_SHOT, icon = 132369,
+        desc = L.SHOT_TIMER_DESCRIPTION,
         sections = {
             {
-                title = "Aspects", module = "aspects", icon = 136076,
+                title = L.AUTO_SHOT_TIMER, module = "shotTimer", icon = 132369,
                 items = {
-                    { type = "toggle", path = "aspects.onlyInCombat", label = "Only remind in combat" },
-                    { type = "toggle", path = "aspects.warnMovementInCombat", label = "Warn when Cheetah or Pack is on in combat" },
-                    { type = "slider", path = "aspects.snooze", label = "Snooze on right-click", min = 15, max = 600, step = 15, format = function(v) return v >= 60 and ("%dm %02ds"):format(v / 60, v % 60) or ("%ds"):format(v) end },
+                    { type = "slider", path = "shotTimer.width", label = L.WIDTH, min = 140, max = 420, step = 2, format = plain },
+                    { type = "slider", path = "shotTimer.height", label = L.HEIGHT, min = 8, max = 28, step = 1, format = plain },
+                    { type = "slider", path = "shotTimer.aimTime", label = L.AIM_WINDOW, min = 0.3, max = 0.8, step = 0.05, format = secs,
+                      desc = L.SHOT_AIM_DESCRIPTION },
+                    { type = "toggle", path = "shotTimer.latency", label = L.ADD_LATENCY_TO_THE_AIM_WINDOW },
+                    { type = "toggle", path = "shotTimer.showAimMarker", label = L.SHOW_THE_AIM_WINDOW },
+                    { type = "toggle", path = "shotTimer.showCastOverlay", label = L.PROJECT_CASTS_ONTO_THE_BAR,
+                      desc = L.CAST_CLIP_DESCRIPTION },
+                    { type = "toggle", path = "shotTimer.showGCD", label = L.GLOBAL_COOLDOWN_LINE },
+                    { type = "toggle", path = "shotTimer.showDelay", label = L.SHOW_HOW_LATE_THE_LAST_SHOT_WAS },
+                    { type = "toggle", path = "shotTimer.flashOnShot", label = L.FLASH_WHEN_A_SHOT_FIRES },
+                    { type = "toggle", path = "shotTimer.hideIdle", label = L.HIDE_WHEN_NOT_SHOOTING },
+                    { type = "slider", path = "shotTimer.oocAlpha", label = L.OPACITY_OUT_OF_COMBAT, min = 0, max = 1, step = 0.05, format = pct },
                 },
             },
             {
-                title = "Growl", module = "growl", icon = 132270,
+                title = L.RANGE_AND_DEAD_ZONE, module = "range", icon = 132222,
                 items = {
-                    { type = "select", path = "growl.mode", label = "Warn when Growl is on",
-                      values = { { "instance", "In dungeons and raids" }, { "group", "In any group" }, { "never", "Never" } } },
-                    { type = "toggle", path = "growl.warnSoloOff", label = "Warn when Growl is off while solo" },
-                },
-            },
-            {
-                title = "Tracking", module = "tracking", icon = 135942,
-                items = {
-                    { type = "select", path = "tracking.mode", label = "Remind me",
-                      values = { { "pvp", "Track Humanoids in battlegrounds" }, { "always", "Whenever no tracking is on" } } },
-                },
-            },
-            {
-                title = "Ammo", module = "ammo", icon = 132382,
-                items = {
-                    { type = "slider", path = "ammo.low", label = "Low ammo below", min = 100, max = 2000, step = 50, format = plain },
-                    { type = "slider", path = "ammo.critical", label = "Critical below", min = 0, max = 600, step = 25, format = plain },
-                    { type = "toggle", path = "ammo.alwaysShow", label = "Always show the counter" },
-                    { type = "toggle", path = "ammo.sound", label = "Sound at critical" },
-                },
-            },
-            {
-                title = "Alert stack", icon = 132329,
-                items = {
-                    { type = "segmented", path = "alerts.grow", label = "Grow", values = { { "DOWN", "Down" }, { "UP", "Up" } } },
-                    { type = "button", label = "Preview", text = "Show test alerts", action = function() HS.Alerts:Test() end },
+                    { type = "segmented", path = "range.style", label = L.STYLE,
+                      values = { { "pill", L.PILL }, { "text", L.TEXT }, { "dot", L.DOT } } },
+                    { type = "toggle", path = "range.attach", label = L.DOCK_NEXT_TO_THE_AUTO_SHOT_BAR },
+                    { type = "toggle", path = "range.showYards", label = L.SHOW_YARDS },
+                    { type = "toggle", path = "range.showNoTarget", label = L.SHOW_WITHOUT_A_TARGET },
                 },
             },
         },
     },
     {
-        key = "combat", title = "Traps & Stings", icon = 135834,
-        desc = "Timers for traps you placed and stings on enemy nameplates.",
+        key = "reminders", title = L.REMINDERS, icon = 136076,
+        desc = L.ALERTS_DESCRIPTION,
         sections = {
             {
-                title = "Trap timers", module = "traps", icon = 135834,
+                title = L.ASPECTS, module = "aspects", icon = 136076,
                 items = {
-                    { type = "slider", path = "traps.duration", label = "Trap lifetime", min = 20, max = 120, step = 5, format = function(v) return ("%ds"):format(v) end },
-                    { type = "slider", path = "traps.armTime", label = "Arming time", min = 0, max = 5, step = 0.5, format = secs },
+                    { type = "toggle", path = "aspects.onlyInCombat", label = L.ONLY_REMIND_IN_COMBAT },
+                    { type = "toggle", path = "aspects.warnMovementInCombat", label = L.WARN_WHEN_CHEETAH_OR_PACK_IS_ON_IN_COMBAT },
+                    { type = "slider", path = "aspects.snooze", label = L.SNOOZE_ON_RIGHT_CLICK, min = 15, max = 600, step = 15, format = function(v) return v >= 60 and L.MINUTES_SECONDS:format(v / 60, v % 60) or L.SECONDS_INTEGER:format(v) end },
                 },
             },
             {
-                title = "Sting timers", module = "stings", icon = 132204,
+                title = L.GROWL, module = "growl", icon = 132270,
                 items = {
-                    { type = "slider", path = "stings.size", label = "Icon size", min = 14, max = 40, step = 1, format = plain },
-                    { type = "slider", path = "stings.offsetY", label = "Height above nameplate", min = -10, max = 40, step = 1, format = plain },
-                    { type = "toggle", path = "stings.showText", label = "Countdown text" },
-                    { type = "toggle", path = "stings.showMark", label = "Include Hunter's Mark" },
-                    { type = "info", text = "In combat Forever hides aura data from addons, so timers start from your casts." },
+                    { type = "select", path = "growl.mode", label = L.WARN_WHEN_GROWL_IS_ON,
+                      values = { { "instance", L.IN_DUNGEONS_AND_RAIDS }, { "group", L.IN_ANY_GROUP }, { "never", L.NEVER } } },
+                    { type = "toggle", path = "growl.warnSoloOff", label = L.WARN_WHEN_GROWL_IS_OFF_WHILE_SOLO },
                 },
             },
             {
-                title = "Auto-mark enemy pets", module = "autoMark", icon = 137008,
+                title = L.TRACKING, module = "tracking", icon = 135942,
                 items = {
-                    { type = "toggle", path = "autoMark.pvpOnly", label = "Only in battlegrounds and arenas" },
+                    { type = "select", path = "tracking.mode", label = L.REMIND_ME,
+                      values = { { "pvp", L.TRACK_HUMANOIDS_IN_BATTLEGROUNDS }, { "always", L.WHENEVER_NO_TRACKING_IS_ON } } },
+                },
+            },
+            {
+                title = L.AMMO, module = "ammo", icon = 132382,
+                items = {
+                    { type = "slider", path = "ammo.low", label = L.LOW_AMMO_BELOW, min = 100, max = 2000, step = 50, format = plain },
+                    { type = "slider", path = "ammo.critical", label = L.CRITICAL_BELOW, min = 0, max = 600, step = 25, format = plain },
+                    { type = "toggle", path = "ammo.alwaysShow", label = L.ALWAYS_SHOW_THE_COUNTER },
+                    { type = "toggle", path = "ammo.sound", label = L.SOUND_AT_CRITICAL },
+                },
+            },
+            {
+                title = L.ALERT_STACK, icon = 132329,
+                items = {
+                    { type = "segmented", path = "alerts.grow", label = L.GROW, values = { { "DOWN", L.DOWN }, { "UP", L.UP } } },
+                    { type = "button", label = L.PREVIEW, text = L.SHOW_TEST_ALERTS, action = function() HS.Alerts:Test() end },
                 },
             },
         },
     },
     {
-        key = "weaving", title = "Weaving", icon = 132213, notOnForever = true,
-        desc = "Steady Shot rotation guide for Burning Crusade clients.",
+        key = "combat", title = L.TRAPS_STINGS, icon = 135834,
+        desc = L.TRAPS_STINGS_DESCRIPTION,
         sections = {
             {
-                title = "Weaving bar", module = "weavingBar", icon = 132213,
+                title = L.TRAP_TIMERS, module = "traps", icon = 135834,
                 items = {
-                    { type = "toggle", path = "weavingBar.weave", label = "Include melee weaving" },
-                    { type = "slider", path = "weavingBar.window", label = "Seconds shown", min = 5, max = 20, step = 1, format = plain },
-                    { type = "slider", path = "weavingBar.width", label = "Width", min = 250, max = 700, step = 10, format = plain },
-                    { type = "toggle", path = "weavingBar.hideIdle", label = "Hide when not shooting" },
+                    { type = "slider", path = "traps.duration", label = L.TRAP_LIFETIME, min = 20, max = 120, step = 5, format = function(v) return L.SECONDS_INTEGER:format(v) end },
+                    { type = "slider", path = "traps.armTime", label = L.ARMING_TIME, min = 0, max = 5, step = 0.5, format = secs },
+                },
+            },
+            {
+                title = L.STING_TIMERS, module = "stings", icon = 132204,
+                items = {
+                    { type = "slider", path = "stings.size", label = L.ICON_SIZE, min = 14, max = 40, step = 1, format = plain },
+                    { type = "slider", path = "stings.offsetY", label = L.HEIGHT_ABOVE_NAMEPLATE, min = -10, max = 40, step = 1, format = plain },
+                    { type = "toggle", path = "stings.showText", label = L.COUNTDOWN_TEXT },
+                    { type = "toggle", path = "stings.showMark", label = L.INCLUDE_HUNTER_S_MARK },
+                    { type = "info", text = L.FOREVER_AURA_TIMERS_DESCRIPTION },
+                },
+            },
+            {
+                title = L.AUTO_MARK_ENEMY_PETS, module = "autoMark", icon = 137008,
+                items = {
+                    { type = "toggle", path = "autoMark.pvpOnly", label = L.ONLY_IN_BATTLEGROUNDS_AND_ARENAS },
                 },
             },
         },
     },
     {
-        key = "appearance", title = "Appearance", icon = 134400,
-        desc = "Look and feel for every HunterSuite frame.",
+        key = "weaving", title = L.WEAVING, icon = 132213, notOnForever = true,
+        desc = L.WEAVING_DESCRIPTION,
         sections = {
             {
-                title = "Style", icon = 134400,
+                title = L.WEAVING_BAR, module = "weavingBar", icon = 132213,
                 items = {
-                    { type = "accent", path = "appearance.accent", label = "Accent colour" },
-                    { type = "select", path = "appearance.font", label = "Font", values = function() return UI:FontChoices() end,
-                      desc = "Automatic uses a LibSharedMedia font (e.g. from EllesmereUI) when one is loaded." },
-                    { type = "slider", path = "appearance.fontScale", label = "Text size", min = 0.8, max = 1.4, step = 0.05, format = scale },
-                    { type = "select", path = "appearance.texture", label = "Bar texture", values = function() return UI:TextureChoices() end },
-                    { type = "toggle", path = "appearance.shadows", label = "Soft shadows" },
+                    { type = "toggle", path = "weavingBar.weave", label = L.INCLUDE_MELEE_WEAVING },
+                    { type = "slider", path = "weavingBar.window", label = L.SECONDS_SHOWN, min = 5, max = 20, step = 1, format = plain },
+                    { type = "slider", path = "weavingBar.width", label = L.WIDTH, min = 250, max = 700, step = 10, format = plain },
+                    { type = "toggle", path = "weavingBar.hideIdle", label = L.HIDE_WHEN_NOT_SHOOTING },
+                },
+            },
+        },
+    },
+    {
+        key = "appearance", title = L.APPEARANCE, icon = 134400,
+        desc = L.LOOK_AND_FEEL_FOR_EVERY_HUNTERSUITE_FRAME,
+        sections = {
+            {
+                title = L.STYLE, icon = 134400,
+                items = {
+                    { type = "accent", path = "appearance.accent", label = L.ACCENT_COLOUR },
+                    { type = "select", path = "appearance.font", label = L.FONT, values = function() return UI:FontChoices() end,
+                      desc = L.AUTO_FONT_DESCRIPTION },
+                    { type = "slider", path = "appearance.fontScale", label = L.TEXT_SIZE, min = 0.8, max = 1.4, step = 0.05, format = scale },
+                    { type = "select", path = "appearance.texture", label = L.BAR_TEXTURE, values = function() return UI:TextureChoices() end },
+                    { type = "toggle", path = "appearance.shadows", label = L.SOFT_SHADOWS },
                 },
             },
             {
-                title = "Layout", icon = 134520,
+                title = L.LAYOUT, icon = 134520,
                 items = {
-                    { type = "slider", path = "appearance.scale", label = "HUD scale", min = 0.6, max = 1.6, step = 0.05, format = scale },
-                    { type = "slider", path = "appearance.gridSize", label = "Edit mode grid", min = 4, max = 48, step = 2, format = plain },
-                    { type = "toggle", path = "appearance.minimap.hide", label = "Hide minimap button" },
-                    { type = "toggle", path = "appearance.sounds", label = "Play sounds" },
-                    { type = "button", label = "Frames", text = "Open Edit Mode", action = function() HS:HideConfig(); HS.Movers:Start() end },
+                    { type = "slider", path = "appearance.scale", label = L.HUD_SCALE, min = 0.6, max = 1.6, step = 0.05, format = scale },
+                    { type = "slider", path = "appearance.gridSize", label = L.EDIT_MODE_GRID, min = 4, max = 48, step = 2, format = plain },
+                    { type = "toggle", path = "appearance.minimap.hide", label = L.HIDE_MINIMAP_BUTTON },
+                    { type = "toggle", path = "appearance.sounds", label = L.PLAY_SOUNDS },
+                    { type = "button", label = L.FRAMES, text = L.OPEN_EDIT_MODE, action = function() HS:HideConfig(); HS.Movers:Start() end },
                 },
             },
             {
-                title = "Settings window", icon = 134331,
+                title = L.SETTINGS_WINDOW, icon = 134331,
                 items = {
-                    { type = "slider", path = "appearance.configScale", label = "Window scale", min = 0.8, max = 1.4, step = 0.05, format = scale },
-                    { type = "button", label = "Diagnostics", text = "Client report", action = function() HS:ShowDiagnostics() end },
-                    { type = "button", label = "Reset", text = "Reset everything", style = "danger", action = function() StaticPopup_Show("HUNTERSUITE_RESET") end },
+                    { type = "slider", path = "appearance.configScale", label = L.WINDOW_SCALE, min = 0.8, max = 1.4, step = 0.05, format = scale },
+                    { type = "button", label = L.DIAGNOSTICS, text = L.CLIENT_REPORT, action = function() HS:ShowDiagnostics() end },
+                    { type = "button", label = L.RESET, text = L.RESET_EVERYTHING, style = "danger", action = function() StaticPopup_Show("HUNTERSUITE_RESET") end },
                 },
             },
         },
@@ -219,18 +220,18 @@ O.pages = {
 
 -- Short blurbs for the overview's module tiles.
 O.moduleBlurbs = {
-    petBar = { icon = 132165, text = "Mood, health and one-click feeding" },
-    petAlert = { icon = 132163, text = "Call or revive a missing pet" },
-    shotTimer = { icon = 132369, text = "Swing timer with aim window" },
-    range = { icon = 132222, text = "Melee, dead zone, in range" },
-    aspects = { icon = 136076, text = "No aspect / Cheetah in combat" },
-    growl = { icon = 132270, text = "Taunt on in groups, off solo" },
-    tracking = { icon = 135942, text = "Track Humanoids in battlegrounds" },
-    ammo = { icon = 132382, text = "Counter and low-ammo warning" },
-    traps = { icon = 135834, text = "Arming and lifetime timers" },
-    stings = { icon = 132204, text = "Sting countdowns on nameplates" },
-    autoMark = { icon = 137008, text = "Skull enemy pets in PvP", notOnForever = true },
-    weavingBar = { icon = 132213, text = "Steady Shot rotation guide", notOnForever = true },
+    petBar = { icon = 132165, text = L.MOOD_HEALTH_AND_ONE_CLICK_FEEDING },
+    petAlert = { icon = 132163, text = L.CALL_OR_REVIVE_A_MISSING_PET },
+    shotTimer = { icon = 132369, text = L.SWING_TIMER_WITH_AIM_WINDOW },
+    range = { icon = 132222, text = L.MELEE_DEAD_ZONE_IN_RANGE },
+    aspects = { icon = 136076, text = L.NO_ASPECT_CHEETAH_IN_COMBAT },
+    growl = { icon = 132270, text = L.TAUNT_ON_IN_GROUPS_OFF_SOLO },
+    tracking = { icon = 135942, text = L.TRACK_HUMANOIDS_IN_BATTLEGROUNDS },
+    ammo = { icon = 132382, text = L.COUNTER_AND_LOW_AMMO_WARNING },
+    traps = { icon = 135834, text = L.ARMING_AND_LIFETIME_TIMERS },
+    stings = { icon = 132204, text = L.STING_COUNTDOWNS_ON_NAMEPLATES },
+    autoMark = { icon = 137008, text = L.SKULL_ENEMY_PETS_IN_PVP, notOnForever = true },
+    weavingBar = { icon = 132213, text = L.STEADY_SHOT_ROTATION_GUIDE, notOnForever = true },
 }
 
 -- Pages and tiles for features Forever can never run are left out there.
@@ -241,19 +242,19 @@ end
 -- Why a module can't run on this character / client.
 function O.UnsupportedReason(key)
     if key == "weavingBar" then
-        return HS.IS_FOREVER and "Not on Forever (no Steady Shot)" or "Learn Steady Shot first"
+        return HS.IS_FOREVER and L.NOT_ON_FOREVER_NO_STEADY_SHOT or L.LEARN_STEADY_SHOT_FIRST
     elseif key == "autoMark" then
-        return "Raid marks are hidden in PvP on Forever"
+        return L.RAID_MARKS_ARE_HIDDEN_IN_PVP_ON_FOREVER
     elseif key == "petAlert" then
-        return "Learn Call Pet first (level 10)"
+        return L.LEARN_CALL_PET_FIRST_LEVEL_10
     elseif key == "aspects" then
-        return "Learn an aspect first"
+        return L.LEARN_AN_ASPECT_FIRST
     elseif key == "tracking" then
-        return "Learn a tracking ability first"
+        return L.LEARN_A_TRACKING_ABILITY_FIRST
     elseif key == "traps" then
-        return "Learn a trap first"
+        return L.LEARN_A_TRAP_FIRST
     end
-    return "Not available"
+    return L.NOT_AVAILABLE
 end
 
 -- What to call after a setting changes. Returns a function or nil.

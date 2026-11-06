@@ -53,7 +53,21 @@ All reminders share one tidy stack. Right-click one to dismiss it.
   - Drag any frame; it snaps to a grid (hold Shift to place freely).
   - Arrow keys nudge the selected frame (Shift moves 10px).
   - Right-click a frame to reset it.
-- Choose an accent colour, font, bar texture, HUD scale and shadows under **Appearance**. Fonts from EllesmereUI or SharedMedia are picked up automatically.
+- Choose an accent colour, font, bar texture, HUD scale and shadows under **Appearance**. Automatic font selection uses a compatible game font or a preferred shared font for supported locales.
+
+## Localization
+
+HunterSuite follows the game client's language. English, Simplified Chinese (`zhCN`), and Traditional Chinese (`zhTW`) are included; other locales fall back to English. Skill names come from the game when available.
+
+Translations live in `Locales/`: `enUS.lua` defines the default keys, while each language file overrides them. Add new player-facing text to the default table and the translation files, and preserve format specifiers such as `%s`, `%d`, and `%%`. Keep saved setting values, slash commands, and API identifiers language-independent. To add another language, load its file after `enUS.lua` in `HunterSuite.toc`.
+
+From the repository root, run the localization checks with Lua 5.1:
+
+```sh
+lua tests/localization.lua
+lua tests/weaving_locale.lua
+lua tests/addon_load.lua
+```
 
 ## Commands
 

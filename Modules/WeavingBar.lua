@@ -6,9 +6,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local WB = HS:NewModule("weavingBar", { title = "Weaving Bar" })
+local WB = HS:NewModule("weavingBar", { title = L.WEAVING_BAR_2 })
 
 function WB:IsSupported()
     return not HS.IS_FOREVER and S.Known(S.STEADY_SHOT)
@@ -21,13 +22,13 @@ local ARCANE_CAST = 0.5
 local WEAVE_TIME = 0.3
 
 local ABILITY_INFO = {
-    auto   = { color = { 0.33, 0.85, 0.52 }, label = "A",   icon = 132369, melee = false },
-    steady = { color = { 0.36, 0.67, 1.00 }, label = "S",   icon = 132213, melee = false },
-    multi  = { color = { 1.00, 0.74, 0.28 }, label = "M",   icon = 132330, melee = false },
-    arcane = { color = { 0.70, 0.52, 1.00 }, label = "Arc", icon = 132218, melee = false },
-    raptor = { color = { 0.97, 0.36, 0.36 }, label = "R",   icon = 132223, melee = true },
-    melee  = { color = { 1.00, 0.60, 0.20 }, label = "W",   icon = 132223, melee = true },
-    weave  = { color = { 1.00, 0.55, 0.20 }, label = "W",   icon = 132223, melee = true },
+    auto   = { color = { 0.33, 0.85, 0.52 }, label = L.WEAVE_AUTO_SHORT,   icon = 132369, melee = false },
+    steady = { color = { 0.36, 0.67, 1.00 }, label = L.WEAVE_STEADY_SHORT, icon = 132213, melee = false },
+    multi  = { color = { 1.00, 0.74, 0.28 }, label = L.WEAVE_MULTI_SHORT,  icon = 132330, melee = false },
+    arcane = { color = { 0.70, 0.52, 1.00 }, label = L.WEAVE_ARCANE_SHORT, icon = 132218, melee = false },
+    raptor = { color = { 0.97, 0.36, 0.36 }, label = L.WEAVE_RAPTOR_SHORT, icon = 132223, melee = true },
+    melee  = { color = { 1.00, 0.60, 0.20 }, label = L.WEAVE_MELEE_SHORT,  icon = 132223, melee = true },
+    weave  = { color = { 1.00, 0.55, 0.20 }, label = L.WEAVE_MELEE_SHORT,  icon = 132223, melee = true },
 }
 
 -- ============================================================================
@@ -54,7 +55,7 @@ ROTATIONS["1:1"] = {
 
 -- French Rotation 5:5:1:1 - THE core rotation
 ROTATIONS["french"] = {
-    name = "French 5:5:1:1",
+    name = L.FRENCH_5_5_1_1,
     notation = "asmasasAasas",
     hasWeaving = false,
     buildSequence = function(eWS)
@@ -78,7 +79,7 @@ ROTATIONS["french"] = {
 
 -- Short French 5:4:1:1 - SV without Serpent's Swiftness
 ROTATIONS["short_french"] = {
-    name = "Short French 5:4:1:1",
+    name = L.SHORT_FRENCH_5_4_1_1,
     notation = "asmasasAas",
     hasWeaving = false,
     buildSequence = function(eWS)
@@ -100,7 +101,7 @@ ROTATIONS["short_french"] = {
 
 -- Long French 5:6:1:1 - BM with Imp. Hawk proc
 ROTATIONS["long_french"] = {
-    name = "Long French 5:6:1:1",
+    name = L.LONG_FRENCH_5_6_1_1,
     notation = "asAamasasasas",
     hasWeaving = false,
     buildSequence = function(eWS)
@@ -126,7 +127,7 @@ ROTATIONS["long_french"] = {
 
 -- Skipping Rotation 5:9:1:1
 ROTATIONS["skipping"] = {
-    name = "Skipping 5:9:1:1",
+    name = L.SKIPPING_5_9_1_1,
     notation = "asasamaasasaAaasa",
     hasWeaving = false,
     buildSequence = function(eWS)
@@ -188,7 +189,7 @@ ROTATIONS["2:3"] = {
 
 -- French Weaving 5:5:1:1 3w
 ROTATIONS["french_weave"] = {
-    name = "French Weave 5:5:1:1 3w",
+    name = L.FRENCH_WEAVE_5_5_1_1_3W,
     notation = "asmasasAasas +3w",
     hasWeaving = true,
     buildSequence = function(eWS)
@@ -215,7 +216,7 @@ ROTATIONS["french_weave"] = {
 
 -- 1:1 Half-Weave 2:2 1w - THE sweet spot
 ROTATIONS["half_weave"] = {
-    name = "1:1 Half-Weave",
+    name = L.TEXT_1_1_HALF_WEAVE,
     notation = "aswas",
     hasWeaving = true,
     buildSequence = function(eWS)
@@ -300,7 +301,7 @@ local state = {
 
 local HASTE = {
     rapidFire = { ids = { [3045] = true }, name = "Rapid Fire" },
-    quickShots = { name = "Quick Shots" },
+    quickShots = { ids = { [6150] = true }, name = "Quick Shots" },
     bloodlust = { ids = { [2825] = true, [32182] = true }, name = "Bloodlust", alt = "Heroism" },
     drums = { ids = { [35476] = true }, name = "Drums of Battle" },
 }
@@ -321,9 +322,10 @@ end
 function WB:DetectSpec()
     state.isBM = false
     if not GetNumTalents then return end
+    local talentName = C.GetSpellName(34466) or "Serpent's Swiftness"
     for i = 1, GetNumTalents(1) or 0 do
         local name, _, _, _, rank = GetTalentInfo(1, i)
-        if name == "Serpent's Swiftness" then
+        if name == talentName then
             state.isBM = (rank or 0) > 0
             return
         end
@@ -377,7 +379,7 @@ local MAX_BLOCKS = 40
 
 function WB:Build()
     local db = self.db
-    local f = UI:Element("HunterSuiteWeavingBar", db, "Weaving Bar")
+    local f = UI:Element("HunterSuiteWeavingBar", db, L.WEAVING_BAR_2)
     f:SetSize(db.width, db.height + 30)
     UI:Surface(f, { radius = 6, color = "bg", border = { 1, 1, 1, 0.08 }, shadow = true })
 
@@ -420,7 +422,7 @@ function WB:Build()
     f:SetScript("OnUpdate", function(_, elapsed) WB:OnUpdate(elapsed) end)
     f:Hide()
     self.frame = f
-    HS.Movers:Register(f, { label = "Weaving Bar", defaultPath = "weavingBar.position", module = "weavingBar" })
+    HS.Movers:Register(f, { label = L.WEAVING_BAR_2, defaultPath = "weavingBar.position", module = "weavingBar" })
 end
 
 function WB:Render(now)
@@ -475,7 +477,7 @@ function WB:OnUpdate(elapsed)
         if state.cycleStart <= 0 then state.cycleStart = now end
         state.lastAuto = state.cycleStart
         f.title:SetText(ROTATIONS.french.name)
-        f.ews:SetText("eWS 2.17s")
+        f.ews:SetText(L.WEAVE_SPEED:format(2.17))
         self:Render(now)
         return
     end
@@ -488,11 +490,11 @@ function WB:OnUpdate(elapsed)
     local sinceAuto = now - state.lastAuto
     local toNext = state.eWS - sinceAuto
     if state.autoRepeat and state.lastAuto > 0 and toNext > 0 and toNext < 0.5 then
-        f.hint:SetText("Wait for Auto")
+        f.hint:SetText(L.WAIT_FOR_AUTO)
         f.hint:SetTextColor(UI:Color("danger"))
         f.hint:Show()
     elseif state.autoRepeat and state.lastAuto > 0 and toNext > MULTI_CAST and toNext < STEADY_CAST then
-        f.hint:SetText("Multi / Arcane now")
+        f.hint:SetText(L.MULTI_ARCANE_NOW)
         f.hint:SetTextColor(UI:Color("warn"))
         f.hint:Show()
     elseif now - state.changedAt < 2 and state.rotation then
@@ -513,7 +515,7 @@ function WB:OnUpdate(elapsed)
             if math.abs(cyc - old) > 0.1 then self:SelectRotation() end
         end
         f.title:SetText(state.rotation and ROTATIONS[state.rotation].name or "--")
-        f.ews:SetFormattedText("eWS %.2fs", state.eWS)
+        f.ews:SetFormattedText(L.WEAVE_SPEED, state.eWS)
     end
 end
 

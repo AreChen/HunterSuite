@@ -6,16 +6,17 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Alert = HS:NewModule("petAlert", { title = "Pet Missing", secure = true })
+local Alert = HS:NewModule("petAlert", { title = L.PET_MISSING, secure = true })
 
 function Alert:IsSupported()
     return S.Known(S.CALL_PET)
 end
 
 function Alert:Build()
-    local f = UI:Element("HunterSuitePetMissing", self.db, "Pet missing", "SecureActionButtonTemplate")
+    local f = UI:Element("HunterSuitePetMissing", self.db, L.PET_MISSING_2, "SecureActionButtonTemplate")
     f:RegisterForClicks("AnyUp", "AnyDown")
     f:SetSize(220, 44)
     UI:Surface(f, { radius = 6, color = "bg", border = { 1, 1, 1, 0.08 }, shadow = true })
@@ -38,9 +39,9 @@ function Alert:Build()
 
     f:SetScript("OnEnter", function(btn)
         GameTooltip:SetOwner(btn, "ANCHOR_TOP", 0, 6)
-        GameTooltip:AddLine(btn.title:GetText() or "Pet", 1, 1, 1)
-        GameTooltip:AddDoubleLine("Left-click", S.Name(S.CALL_PET) or "Call Pet", 0.67, 0.83, 0.45, 0.9, 0.9, 0.9)
-        GameTooltip:AddDoubleLine("Right-click", S.Name(S.REVIVE_PET) or "Revive Pet", 0.67, 0.83, 0.45, 0.9, 0.9, 0.9)
+        GameTooltip:AddLine(btn.title:GetText() or L.PET, 1, 1, 1)
+        GameTooltip:AddDoubleLine(L.LEFT_CLICK, S.Name(S.CALL_PET) or L.CALL_PET, 0.67, 0.83, 0.45, 0.9, 0.9, 0.9)
+        GameTooltip:AddDoubleLine(L.RIGHT_CLICK, S.Name(S.REVIVE_PET) or L.REVIVE_PET, 0.67, 0.83, 0.45, 0.9, 0.9, 0.9)
         GameTooltip:Show()
     end)
     f:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -49,7 +50,7 @@ function Alert:Build()
     f:SetScript("OnShow", function() Alert:Paint() end)
 
     self.frame = f
-    HS.Movers:Register(f, { label = "Pet missing", defaultPath = "petAlert.position", module = "petAlert" })
+    HS.Movers:Register(f, { label = L.PET_MISSING_2, defaultPath = "petAlert.position", module = "petAlert" })
 end
 
 function Alert:Paint()
@@ -61,12 +62,12 @@ function Alert:Paint()
     f.stripe:SetVertexColor(r, g, b)
     UI:SetBorderColor(f, { r, g, b, 0.4 })
     if dead then
-        f.title:SetText("Your pet is dead")
-        f.sub:SetText("Right-click: " .. (S.Name(S.REVIVE_PET) or "Revive Pet"))
+        f.title:SetText(L.YOUR_PET_IS_DEAD)
+        f.sub:SetText(L.RIGHT_CLICK_S:format(S.Name(S.REVIVE_PET) or L.REVIVE_PET))
         f.iconFrame.icon:SetTexture(S.Icon(S.REVIVE_PET) or 132163)
     else
-        f.title:SetText("No pet")
-        f.sub:SetText("Left: call  |  Right: revive")
+        f.title:SetText(L.NO_PET)
+        f.sub:SetText(L.LEFT_CALL_RIGHT_REVIVE)
         f.iconFrame.icon:SetTexture(S.Icon(S.CALL_PET) or 132161)
     end
     f.title:SetTextColor(r * 0.35 + 0.65, g * 0.35 + 0.65, b * 0.35 + 0.65)
@@ -76,9 +77,9 @@ function Alert:ApplyActions()
     HS:RunOutOfCombat(function()
         local f = self.frame
         f:SetAttribute("*type1", "spell")
-        f:SetAttribute("*spell1", S.Name(S.CALL_PET) or "Call Pet")
+        f:SetAttribute("*spell1", S.Name(S.CALL_PET) or L.CALL_PET)
         f:SetAttribute("*type2", "spell")
-        f:SetAttribute("*spell2", S.Name(S.REVIVE_PET) or "Revive Pet")
+        f:SetAttribute("*spell2", S.Name(S.REVIVE_PET) or L.REVIVE_PET)
     end, "petalert-actions")
 end
 

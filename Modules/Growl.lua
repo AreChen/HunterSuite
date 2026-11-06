@@ -5,9 +5,10 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI, C, S = HS.UI, HS.Compat, HS.Spells
 
-local Growl = HS:NewModule("growl", { title = "Growl Reminder" })
+local Growl = HS:NewModule("growl", { title = L.GROWL_REMINDER })
 
 local growlIDs, growlNames
 
@@ -41,11 +42,11 @@ function Growl:Evaluate()
 
     if autocast == true and wantOff then
         HS.Alerts:Set("growl.on", {
-            title = "Growl is on",
-            text = "Your pet will taunt off the tank",
+            title = L.GROWL_IS_ON,
+            text = L.YOUR_PET_WILL_TAUNT_OFF_THE_TANK,
             icon = icon or S.Icon(S.GROWL) or 132270,
             color = "warn", priority = 7,
-            tooltip = "Ctrl-click Growl on the pet bar (or right-click it) to turn autocast off.",
+            tooltip = L.GROWL_DISABLE_HINT,
         })
     else
         HS.Alerts:Clear("growl.on")
@@ -53,11 +54,11 @@ function Growl:Evaluate()
 
     if autocast == false and not grouped and not inInstance and db.warnSoloOff then
         HS.Alerts:Set("growl.off", {
-            title = "Growl is off",
-            text = "Your pet won't hold aggro while solo",
+            title = L.GROWL_IS_OFF,
+            text = L.YOUR_PET_WON_T_HOLD_AGGRO_WHILE_SOLO,
             icon = icon or S.Icon(S.GROWL) or 132270,
             color = "info", priority = 3,
-            tooltip = "Right-click Growl on the pet bar to turn autocast back on.",
+            tooltip = L.GROWL_ENABLE_HINT,
         })
     else
         HS.Alerts:Clear("growl.off")

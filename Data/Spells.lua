@@ -6,7 +6,7 @@
 ]]
 
 local _, HS = ...
-local C = HS.Compat
+local C, L = HS.Compat, HS.L
 
 local S = {}
 HS.Spells = S
@@ -62,18 +62,18 @@ S.TRACKING = {
     elementals = 19880, demons = 19878, giants = 19882, dragonkin = 19879,
 }
 
--- Fallback English names, used only when the client cannot name an ID.
-local ENGLISH = {
-    [75] = "Auto Shot", [6991] = "Feed Pet", [1539] = "Feed Pet Effect", [136] = "Mend Pet",
-    [883] = "Call Pet", [982] = "Revive Pet", [2649] = "Growl", [5384] = "Feign Death",
-    [13165] = "Aspect of the Hawk", [13163] = "Aspect of the Monkey", [5118] = "Aspect of the Cheetah",
-    [13159] = "Aspect of the Pack", [13161] = "Aspect of the Beast", [20043] = "Aspect of the Wild",
-    [34074] = "Aspect of the Viper", [1499] = "Freezing Trap", [13809] = "Frost Trap",
-    [13795] = "Immolation Trap", [13813] = "Explosive Trap", [34600] = "Snake Trap",
-    [3355] = "Freezing Trap Effect", [13810] = "Frost Trap Aura", [13797] = "Immolation Trap Effect",
-    [13812] = "Explosive Trap Effect", [1978] = "Serpent Sting", [3043] = "Scorpid Sting",
-    [3034] = "Viper Sting", [19386] = "Wyvern Sting", [1130] = "Hunter's Mark", [19883] = "Track Humanoids",
-    [2973] = "Raptor Strike", [2974] = "Wing Clip", [3044] = "Arcane Shot", [34120] = "Steady Shot",
+-- Locale keys for names used when the client cannot resolve an ID.
+local SPELL_KEYS = {
+    [75] = "AUTO_SHOT", [6991] = "FEED_PET", [1539] = "FEED_PET_EFFECT", [136] = "MEND_PET",
+    [883] = "CALL_PET", [982] = "REVIVE_PET", [2649] = "GROWL", [5384] = "FEIGN_DEATH",
+    [13165] = "ASPECT_OF_THE_HAWK", [13163] = "ASPECT_OF_THE_MONKEY", [5118] = "ASPECT_OF_THE_CHEETAH",
+    [13159] = "ASPECT_OF_THE_PACK", [13161] = "ASPECT_OF_THE_BEAST", [20043] = "ASPECT_OF_THE_WILD",
+    [34074] = "ASPECT_OF_THE_VIPER", [1499] = "FREEZING_TRAP", [13809] = "FROST_TRAP",
+    [13795] = "IMMOLATION_TRAP", [13813] = "EXPLOSIVE_TRAP", [34600] = "SNAKE_TRAP",
+    [3355] = "FREEZING_TRAP_EFFECT", [13810] = "FROST_TRAP_AURA", [13797] = "IMMOLATION_TRAP_EFFECT",
+    [13812] = "EXPLOSIVE_TRAP_EFFECT", [1978] = "SERPENT_STING", [3043] = "SCORPID_STING",
+    [3034] = "VIPER_STING", [19386] = "WYVERN_STING", [1130] = "HUNTERS_MARK", [19883] = "TRACK_HUMANOIDS",
+    [2973] = "RAPTOR_STRIKE", [2974] = "WING_CLIP", [3044] = "ARCANE_SHOT", [34120] = "STEADY_SHOT",
 }
 
 local nameCache = {}
@@ -87,7 +87,7 @@ function S.Name(id)
         nameCache[id] = name
         return name
     end
-    return ENGLISH[id]
+    return L[SPELL_KEYS[id]]
 end
 
 function S.Icon(id)
@@ -103,7 +103,8 @@ function S.Sets(ids)
     end
     local name = S.Name(ids)
     if name then nameSet[name] = true end
-    if ENGLISH[ids[1]] then nameSet[ENGLISH[ids[1]]] = true end
+    local english = HS.L_DEFAULTS[SPELL_KEYS[ids[1]]]
+    if english then nameSet[english] = true end
     return idSet, nameSet
 end
 

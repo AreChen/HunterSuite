@@ -7,6 +7,7 @@
 ]]
 
 local _, HS = ...
+local L = HS.L
 local UI = HS.UI
 
 local M = { entries = {}, active = false }
@@ -21,7 +22,7 @@ HS.Movers = M
 function M:Register(frame, opts)
     local entry = {
         frame = frame,
-        label = opts.label or frame.hsLabel or "Frame",
+        label = opts.label or frame.hsLabel or L.FRAME,
         db = opts.db or frame.hsDB,
         defaultPath = opts.defaultPath,
         module = opts.module,
@@ -139,9 +140,9 @@ local function CreateMover(entry)
         UI:SetSurfaceColor(self, { r, g, b, 0.28 })
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:AddLine(entry.label, 1, 1, 1)
-        GameTooltip:AddLine("Drag to move. Shift-drag ignores the grid.", 0.75, 0.77, 0.8)
-        GameTooltip:AddLine("Arrow keys nudge 1px (Shift: 10px).", 0.75, 0.77, 0.8)
-        GameTooltip:AddLine("Right-click to reset.", 0.75, 0.77, 0.8)
+        GameTooltip:AddLine(L.DRAG_TO_MOVE_SHIFT_DRAG_IGNORES_THE_GRID, 0.75, 0.77, 0.8)
+        GameTooltip:AddLine(L.ARROW_KEYS_NUDGE_1PX_SHIFT_10PX, 0.75, 0.77, 0.8)
+        GameTooltip:AddLine(L.RIGHT_CLICK_TO_RESET, 0.75, 0.77, 0.8)
         GameTooltip:Show()
     end)
     m:SetScript("OnLeave", function(self)
@@ -294,19 +295,19 @@ local function BuildToolbar()
 
     local title = UI:Text(t, { size = 14, color = "text" })
     title:SetPoint("TOPLEFT", logo, "TOPRIGHT", 10, -1)
-    title:SetText("Edit Mode")
+    title:SetText(L.EDIT_MODE)
     local sub = UI:Text(t, { size = 11, color = "textDim" })
     sub:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -3)
     sub:SetWidth(250)
     sub:SetJustifyH("LEFT")
-    sub:SetText("Drag frames - arrows nudge - right-click resets")
+    sub:SetText(L.DRAG_FRAMES_ARROWS_NUDGE_RIGHT_CLICK_RESETS)
 
-    local done = UI:Button(t, "Done", "primary", 70, 26)
+    local done = UI:Button(t, L.DONE, "primary", 70, 26)
     done:SetPoint("RIGHT", -14, 0)
     done:SetScript("OnClick", function() M:Stop(true) end)
     t.done = done
 
-    local reset = UI:Button(t, "Reset all", "ghost", 76, 26)
+    local reset = UI:Button(t, L.RESET_ALL, "ghost", 76, 26)
     reset:SetPoint("RIGHT", done, "LEFT", -6, 0)
     reset:SetScript("OnClick", function()
         for _, entry in ipairs(M.entries) do ResetEntry(entry) end
@@ -315,7 +316,7 @@ local function BuildToolbar()
     local gridBtn = UI:Button(t, "", "secondary", 64, 26)
     gridBtn:SetPoint("RIGHT", reset, "LEFT", -6, 0)
     local function UpdateGridLabel()
-        gridBtn:SetLabel(HS.db.appearance.snapToGrid and "Grid: on" or "Grid: off")
+        gridBtn:SetLabel(HS.db.appearance.snapToGrid and L.GRID_ON or L.GRID_OFF)
     end
     gridBtn:SetScript("OnClick", function()
         HS.db.appearance.snapToGrid = not HS.db.appearance.snapToGrid
@@ -335,7 +336,7 @@ end
 function M:Start()
     if self.active then return end
     if InCombatLockdown() then
-        HS:Print("Edit mode is not available in combat.")
+        HS:Print(L.EDIT_MODE_IS_NOT_AVAILABLE_IN_COMBAT)
         return
     end
     self.active = true
@@ -376,7 +377,7 @@ end
 HS:On("COMBAT_STARTED", function()
     if M.active then
         M:Stop(true)
-        HS:Print("Edit mode closed: you entered combat.")
+        HS:Print(L.EDIT_MODE_CLOSED_YOU_ENTERED_COMBAT)
     end
 end)
 
